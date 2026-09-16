@@ -24,6 +24,8 @@ pnpm build
 
 Tests use synthetic fixtures only. Do not commit, paste, or depend on anyone's Claude credentials or subscription data.
 
+Live Pro/Max quota validation is optional volunteer work. See [docs/PRO_MAX_VALIDATION.md](docs/PRO_MAX_VALIDATION.md). Never include tokens, prompts, or transcripts.
+
 ## Pull requests
 
 - Keep changes small.

@@ -2,35 +2,36 @@
 
 ## Product constraints
 
-PromptGauge must not require Claude OAuth credentials.
+PromptGauge:
 
-It must not upload prompts or project files.
+- does not need Claude OAuth credentials
+- must never inspect the macOS Keychain, Windows Credential Manager, browser cookies, Claude credential files, or private Anthropic HTTP APIs
+- must never upload source code, prompts, transcripts, or project files
+- has no central telemetry service and must not send usage data to PromptGauge maintainers
+- must treat `~/.claude/settings.json` modifications as privileged: backup first, validate JSON, write atomically, preserve foreign hooks and an existing `statusLine`
+- must fail open for Claude Code display if collection fails
 
-It must not send telemetry to PromptGauge maintainers.
-
-Reports are local.
-
-Sensitive values must be redacted.
-
-PromptGauge must not read the macOS Keychain, Windows Credential Manager, browser cookies, Claude `.credentials` files, or private Anthropic endpoints.
-
-If live quota is not exposed by Claude Code through a documented status-line or equivalent interface, PromptGauge displays `Live subscription quota unavailable`. It will not fabricate a percentage.
+If live quota is not exposed by Claude Code through a documented status-line field, PromptGauge displays unavailable. It will not fabricate a percentage.
 
 ## Reporting a vulnerability
 
-Do not post security issues publicly if disclosure would expose users.
+Do not open a public issue if disclosure would expose users.
 
-Email the maintainer privately through GitHub Security Advisories on this repository once the public repo exists, or open a private advisory.
+Use GitHub Security Advisories on this repository:
+
+https://github.com/DonHamad/promptgauge/security/advisories/new
 
 Include:
 
 - PromptGauge version
 - Claude Code version if relevant
-- Reproduction without secrets
+- Reproduction **without** secrets
 - Impact
 
-We will redact credentials from any materials you send if they are included accidentally.
+If you send credentials by accident, assume they are compromised and rotate them. Maintainers will redact them from materials and will not reuse them.
+
+There is no paid bug bounty.
 
 ## Secret scanning
 
-CI runs a local pattern scan (`pnpm scan:secrets`) in addition to GitHub's default secret scanning on public repositories.
+CI runs a local pattern scan (`pnpm scan:secrets`) in addition to GitHub’s default secret scanning on public repositories.
