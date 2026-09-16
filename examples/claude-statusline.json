@@ -1,0 +1,7 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "promptgauge collect",
+    "padding": 0
+  }
+}

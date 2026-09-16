@@ -1,0 +1,27 @@
+name: Bug report
+description: Report incorrect observed behavior
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include Claude OAuth tokens, prompt text, or project source.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PromptGauge version
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Synthetic reproduction
+      description: Use fixtures or redacted JSON. No secrets.
+    validations:
+      required: true
