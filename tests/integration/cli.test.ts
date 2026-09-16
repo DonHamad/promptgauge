@@ -74,9 +74,7 @@ describe("collect + status integration", () => {
 
     const status = await run(
       ["status", "--data-dir", dataDir, "--now", "2026-09-16T04:00:00.000Z"],
-      {
-        dataDir,
-      },
+      { dataDir },
     );
     expect(status.out).toMatch(/PromptGauge/);
     expect(status.out).toMatch(/Claude Code integration: ACTIVE/);
@@ -84,6 +82,14 @@ describe("collect + status integration", () => {
     expect(status.out).toMatch(/Used:\s+21%/);
     expect(status.out).toMatch(/Source:\s+Claude Code/);
     expect(status.out).toMatch(/ID:\s+prompt-valid-1/);
+
+    const simple = await run(
+      ["status", "--simple", "--data-dir", dataDir, "--now", "2026-09-16T04:00:00.000Z"],
+      { dataDir },
+    );
+    expect(simple.out).toMatch(/5h usage\s+37%/);
+    expect(simple.out).toMatch(/7d usage\s+21%/);
+    expect(simple.out).not.toMatch(/CLAUDE_REPORTED/);
   });
 
   it("prints unavailable when Claude Code omits rate_limits", async () => {
@@ -196,6 +202,18 @@ describe("doctor", () => {
     expect(doctor.out).toMatch(/5-hour quota telemetry\s+UNAVAILABLE/);
     expect(doctor.out).toMatch(/PromptGauge statusLine integration\s+WARN/);
   });
+
+  it("prints beginner doctor output", async () => {
+    const dataDir = tempDir();
+    const doctor = await run(["doctor", "--simple", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { PROMPTGAUGE_FAKE_CLAUDE: "1" },
+    });
+    expect(doctor.out).toMatch(/Status line\s+NEEDS SETUP/);
+    expect(doctor.out).toMatch(/\/promptgauge:setup/);
+    expect(doctor.out).not.toMatch(/CLAUDE_REPORTED/);
+  });
 });
 
 describe("cli flags", () => {
@@ -207,7 +225,7 @@ describe("cli flags", () => {
     expect(help.out).toMatch(/promptgauge prompts/);
     expect(help.out).toMatch(/pre-release/i);
     const version = await run(["--version"], { dataDir });
-    expect(version.out).toMatch(/0\.3\.0/);
+    expect(version.out).toMatch(/0\.4\.0/);
   });
 });
 
