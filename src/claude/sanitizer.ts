@@ -5,8 +5,12 @@ const FORBIDDEN_KEYS = new Set([
   "last_assistant_message",
   "task_subject",
   "task_description",
+  "transcript_path",
+  "cwd",
   "command",
   "content",
+  "current_dir",
+  "project_dir",
 ]);
 
 export function assertNoForbiddenFields(event: Record<string, unknown>): void {

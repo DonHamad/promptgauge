@@ -1,8 +1,8 @@
 import type { PromptAttribution, StoredEvent } from "../types.js";
-import { quotaDelta, snapshotsForPrompt } from "../quota/delta.js";
+import { estimatedApiCostDeltaForPrompt, quotaDelta, snapshotsForPrompt } from "../quota/delta.js";
 
 const LIMITATION =
-  "Quota delta is not token consumption. Prompt end is observed from the documented Stop hook when present; exact API-generation boundaries are not claimed.";
+  "Quota delta is not token consumption. Estimated API cost delta is derived from cost.total_cost_usd and is not subscription billing. Exact prompt token consumption is unavailable.";
 
 export function attributePrompt(events: StoredEvent[], promptId: string): PromptAttribution {
   const related = events.filter((event) => "promptId" in event && event.promptId === promptId);
@@ -35,18 +35,32 @@ export function attributePrompt(events: StoredEvent[], promptId: string): Prompt
     taskCreatedCount: related.filter(
       (event) => event.type === "task_lifecycle" && event.phase === "created",
     ).length,
-    quotaDeltaFiveHour: quotaDelta(
-      firstSnap?.fiveHour?.value,
-      lastSnap?.fiveHour?.value,
-      lastSnap?.capturedAt ?? start?.capturedAt ?? new Date(0).toISOString(),
-    ),
-    quotaDeltaSevenDay: quotaDelta(
-      firstSnap?.sevenDay?.value,
-      lastSnap?.sevenDay?.value,
-      lastSnap?.capturedAt ?? start?.capturedAt ?? new Date(0).toISOString(),
-    ),
+    quotaDeltaFiveHour:
+      firstSnap && lastSnap && distinctSameSessionPair(firstSnap, lastSnap)
+        ? quotaDelta(firstSnap.fiveHour?.value, lastSnap.fiveHour?.value, lastSnap.capturedAt)
+        : undefined,
+    quotaDeltaSevenDay:
+      firstSnap && lastSnap && distinctSameSessionPair(firstSnap, lastSnap)
+        ? quotaDelta(firstSnap.sevenDay?.value, lastSnap.sevenDay?.value, lastSnap.capturedAt)
+        : undefined,
+    estimatedApiCostDelta: estimatedApiCostDeltaForPrompt(events, promptId),
+    latestContextWindow: lastSnap?.contextWindow,
+    exactPromptTokenConsumption: "unavailable",
     limitation: LIMITATION,
   };
+}
+
+function distinctSameSessionPair(
+  first: { capturedAt: string; sessionId?: string },
+  last: { capturedAt: string; sessionId?: string },
+): boolean {
+  if (first.capturedAt === last.capturedAt) {
+    return false;
+  }
+  if (first.sessionId && last.sessionId && first.sessionId !== last.sessionId) {
+    return false;
+  }
+  return true;
 }
 
 export function promptsInSession(events: StoredEvent[], sessionId: string): string[] {

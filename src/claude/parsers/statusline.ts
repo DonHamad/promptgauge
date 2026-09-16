@@ -1,6 +1,11 @@
-import type { QuotaSnapshotEvent, QuotaWindow } from "../../core/types.js";
+import type {
+  ContextCurrentUsage,
+  ContextWindowTelemetry,
+  QuotaSnapshotEvent,
+  QuotaWindow,
+} from "../../core/types.js";
+import { projectIdentityFromPath } from "../../core/privacy/project-id.js";
 import { asFiniteNumber, asString, isRecord } from "../../utils/json.js";
-import { normalizePathForCompare } from "../../utils/platform.js";
 
 export type StatusLineParseResult =
   | { ok: true; event: QuotaSnapshotEvent; sessionId?: string; promptId?: string }
@@ -22,32 +27,40 @@ export function parseStatusLine(payload: unknown, capturedAt: string): StatusLin
   }
 
   const rateLimits = isRecord(payload.rate_limits) ? payload.rate_limits : undefined;
-  const fiveHour = parseWindow(rateLimits?.five_hour);
-  const sevenDay = parseWindow(rateLimits?.seven_day);
-  const sessionId = asString(payload.session_id);
-  const promptId = asString(payload.prompt_id);
-  const transcriptPath = asString(payload.transcript_path);
+  const modelRaw = isRecord(payload.model) ? payload.model : undefined;
+  const costRaw = isRecord(payload.cost) ? payload.cost : undefined;
+  const workspace = isRecord(payload.workspace) ? payload.workspace : undefined;
+  const projectPath = asString(workspace?.project_dir);
+  const project = projectPath ? projectIdentityFromPath(projectPath) : undefined;
 
-  if (transcriptPath) {
-    normalizePathForCompare(transcriptPath);
-  }
+  const event: QuotaSnapshotEvent = {
+    type: "quota_snapshot",
+    capturedAt,
+    ingestSource: "statusline",
+    sessionId: asString(payload.session_id),
+    promptId: asString(payload.prompt_id),
+    claudeVersion: asString(payload.version),
+    model: modelRaw
+      ? {
+          id: asString(modelRaw.id),
+          displayName: asString(modelRaw.display_name),
+        }
+      : undefined,
+    fiveHour: parseWindow(rateLimits?.five_hour),
+    sevenDay: parseWindow(rateLimits?.seven_day),
+    estimatedApiCostUsd: asFiniteNumber(costRaw?.total_cost_usd),
+    contextWindow: parseContextWindow(payload.context_window),
+    projectKey: project?.projectKey,
+    projectBasename: project?.projectBasename,
+    provenance: "claude_reported",
+    source: "claude_statusline",
+  };
 
   return {
     ok: true,
-    sessionId,
-    promptId,
-    event: {
-      type: "quota_snapshot",
-      capturedAt,
-      ingestSource: "statusline",
-      sessionId,
-      promptId,
-      claudeVersion: asString(payload.version),
-      fiveHour,
-      sevenDay,
-      provenance: "claude_reported",
-      source: "claude_statusline",
-    },
+    sessionId: event.sessionId,
+    promptId: event.promptId,
+    event,
   };
 }
 
@@ -64,4 +77,53 @@ function parseWindow(value: unknown): QuotaWindow | undefined {
     return undefined;
   }
   return { usedPercentage, resetsAtEpochSeconds };
+}
+
+function parseContextWindow(value: unknown): ContextWindowTelemetry | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const currentUsage = parseCurrentUsage(value.current_usage);
+  const telemetry: ContextWindowTelemetry = {
+    totalInputTokens: asFiniteNumber(value.total_input_tokens),
+    totalOutputTokens: asFiniteNumber(value.total_output_tokens),
+    contextWindowSize: asFiniteNumber(value.context_window_size),
+    usedPercentage: asFiniteNumber(value.used_percentage),
+    remainingPercentage: asFiniteNumber(value.remaining_percentage),
+    currentUsage,
+    derivedCacheHitRatio: cacheHitRatio(currentUsage),
+  };
+  if (Object.values(telemetry).every((item) => item === undefined)) {
+    return undefined;
+  }
+  return telemetry;
+}
+
+function parseCurrentUsage(value: unknown): ContextCurrentUsage | undefined {
+  if (value === null || !isRecord(value)) {
+    return undefined;
+  }
+  const usage: ContextCurrentUsage = {
+    inputTokens: asFiniteNumber(value.input_tokens),
+    outputTokens: asFiniteNumber(value.output_tokens),
+    cacheCreationInputTokens: asFiniteNumber(value.cache_creation_input_tokens),
+    cacheReadInputTokens: asFiniteNumber(value.cache_read_input_tokens),
+  };
+  if (Object.values(usage).every((item) => item === undefined)) {
+    return undefined;
+  }
+  return usage;
+}
+
+function cacheHitRatio(usage: ContextCurrentUsage | undefined): number | undefined {
+  if (!usage) {
+    return undefined;
+  }
+  const reads = usage.cacheReadInputTokens ?? 0;
+  const writes = usage.cacheCreationInputTokens ?? 0;
+  const total = reads + writes;
+  if (total <= 0) {
+    return undefined;
+  }
+  return reads / total;
 }

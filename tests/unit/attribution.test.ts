@@ -80,4 +80,24 @@ describe("per-prompt attribution", () => {
     expect(attr.open).toBe(true);
     expect(attr.endedAt).toBeUndefined();
   });
+
+  it("does not report a zero quota delta from a single snapshot", () => {
+    const withOneSnap: StoredEvent[] = [
+      ...events,
+      {
+        type: "quota_snapshot",
+        capturedAt: "2026-09-16T04:02:01.000Z",
+        ingestSource: "statusline",
+        sessionId: "sess-1",
+        promptId: "p-2",
+        provenance: "claude_reported",
+        source: "claude_statusline",
+        fiveHour: { usedPercentage: 12, resetsAtEpochSeconds: 1893456000 },
+      },
+    ];
+    const attr = attributePrompt(withOneSnap, "p-2");
+    expect(attr.quotaDeltaFiveHour).toBeUndefined();
+    expect(attr.estimatedApiCostDelta).toBeUndefined();
+    expect(attr.exactPromptTokenConsumption).toBe("unavailable");
+  });
 });

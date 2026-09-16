@@ -4,7 +4,22 @@
  * Never mix estimated token values with Claude-reported quota percentages
  * without labeling them separately.
  */
-export type MetricProvenance = "claude_reported" | "transcript_observed" | "derived" | "estimated";
+export type MetricProvenance =
+  | "claude_reported"
+  | "claude_reported_estimate"
+  | "transcript_observed"
+  | "derived"
+  | "derived_from_claude_reported_session_cost"
+  | "estimated";
+
+export type DisplayProvenance =
+  | "CLAUDE_REPORTED"
+  | "CLAUDE_REPORTED_ESTIMATE"
+  | "DERIVED"
+  | "DERIVED_FROM_CLAUDE_REPORTED_SESSION_COST"
+  | "ESTIMATED"
+  | "UNAVAILABLE"
+  | "UNKNOWN";
 
 export type MetricConfidence = "high" | "medium" | "low" | "none";
 
@@ -29,6 +44,28 @@ export interface QuotaWindow {
   resetsAtEpochSeconds: number;
 }
 
+export interface ModelInfo {
+  id?: string;
+  displayName?: string;
+}
+
+export interface ContextCurrentUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
+}
+
+export interface ContextWindowTelemetry {
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+  contextWindowSize?: number;
+  usedPercentage?: number;
+  remainingPercentage?: number;
+  currentUsage?: ContextCurrentUsage;
+  derivedCacheHitRatio?: number;
+}
+
 export interface QuotaSnapshot {
   capturedAt: string;
   source: "claude_statusline";
@@ -36,8 +73,13 @@ export interface QuotaSnapshot {
   sessionId?: string;
   promptId?: string;
   claudeVersion?: string;
+  model?: ModelInfo;
   fiveHour?: ProvenancedMetric<QuotaWindow>;
   sevenDay?: ProvenancedMetric<QuotaWindow>;
+  estimatedApiCostUsd?: ProvenancedMetric<number>;
+  contextWindow?: ContextWindowTelemetry;
+  projectKey?: string;
+  projectBasename?: string;
 }
 
 export type StoredEventType =
@@ -59,8 +101,13 @@ export interface QuotaSnapshotEvent extends StoredEventBase {
   sessionId?: string;
   promptId?: string;
   claudeVersion?: string;
+  model?: ModelInfo;
   fiveHour?: QuotaWindow;
   sevenDay?: QuotaWindow;
+  estimatedApiCostUsd?: number;
+  contextWindow?: ContextWindowTelemetry;
+  projectKey?: string;
+  projectBasename?: string;
   provenance: "claude_reported";
   source: "claude_statusline";
 }
@@ -126,6 +173,9 @@ export interface PromptAttribution {
   taskCreatedCount: number;
   quotaDeltaFiveHour?: ProvenancedMetric<number>;
   quotaDeltaSevenDay?: ProvenancedMetric<number>;
+  estimatedApiCostDelta?: ProvenancedMetric<number>;
+  latestContextWindow?: ContextWindowTelemetry;
+  exactPromptTokenConsumption: "unavailable";
   limitation: string;
 }
 

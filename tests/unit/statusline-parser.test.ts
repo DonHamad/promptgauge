@@ -70,6 +70,47 @@ describe("status line parser", () => {
     }
   });
 
+  it("captures cost and context without storing raw paths", () => {
+    const full = readJson("statusline-full.json");
+    const result = parseStatusLine(full, capturedAt);
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.event.estimatedApiCostUsd).toBe(0.01234);
+    expect(result.event.contextWindow?.usedPercentage).toBe(8);
+    expect(result.event.contextWindow?.currentUsage?.cacheReadInputTokens).toBe(2000);
+    expect(result.event.model?.displayName).toBe("Opus");
+    expect(JSON.stringify(result.event)).not.toContain("transcript_path");
+  });
+
+  it("allows five_hour or seven_day independently", () => {
+    const fiveOnly = parseStatusLine(
+      { rate_limits: { five_hour: { used_percentage: 11, resets_at: 1893456000 } } },
+      capturedAt,
+    );
+    const sevenOnly = parseStatusLine(
+      { rate_limits: { seven_day: { used_percentage: 22, resets_at: 1893456000 } } },
+      capturedAt,
+    );
+    expect(fiveOnly.ok && fiveOnly.event.fiveHour?.usedPercentage).toBe(11);
+    expect(fiveOnly.ok && fiveOnly.event.sevenDay).toBeUndefined();
+    expect(sevenOnly.ok && sevenOnly.event.sevenDay?.usedPercentage).toBe(22);
+    expect(sevenOnly.ok && sevenOnly.event.fiveHour).toBeUndefined();
+  });
+
+  it("treats null current_usage as omitted, not zero", () => {
+    const result = parseStatusLine(
+      { context_window: { used_percentage: 4, current_usage: null } },
+      capturedAt,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.event.contextWindow?.usedPercentage).toBe(4);
+      expect(result.event.contextWindow?.currentUsage).toBeUndefined();
+    }
+  });
+
   it("ignores out-of-range percentages", () => {
     const result = parseStatusLine(
       { rate_limits: { five_hour: { used_percentage: 140, resets_at: 1893456000 } } },

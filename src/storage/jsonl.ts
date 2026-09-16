@@ -2,6 +2,7 @@ import fs from "node:fs";
 import type { StoredEvent } from "../core/types.js";
 import { parseJson } from "../utils/json.js";
 import { assertNoForbiddenFields } from "../claude/sanitizer.js";
+import { findForbiddenKeys } from "../core/privacy/allowlist.js";
 import { ensureDataDir } from "./paths.js";
 
 export interface ReadEventsResult {
@@ -17,6 +18,10 @@ export function appendEvents(eventsFile: string, events: StoredEvent[]): void {
   const lines = events
     .map((event) => {
       assertNoForbiddenFields(event as unknown as Record<string, unknown>);
+      const forbidden = findForbiddenKeys(event);
+      if (forbidden.length > 0) {
+        throw new Error(`refusing to persist forbidden field: ${forbidden[0]}`);
+      }
       return JSON.stringify(event);
     })
     .join("\n");

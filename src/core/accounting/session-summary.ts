@@ -1,5 +1,6 @@
-import type { QuotaSnapshot, SessionSummary, StoredEvent } from "../types.js";
+import type { SessionSummary, StoredEvent } from "../types.js";
 import { attributePrompt, promptsInSession } from "../attribution/prompt-lifecycle.js";
+import { toSnapshot } from "../quota/delta.js";
 
 export function summarizeSession(events: StoredEvent[]): SessionSummary {
   const latestQuotaEvent = [...events].reverse().find((event) => event.type === "quota_snapshot");
@@ -38,36 +39,4 @@ function latestPrompt(events: StoredEvent[], promptIds: string[]): string | unde
     }
   }
   return promptIds[promptIds.length - 1];
-}
-
-function toSnapshot(event: StoredEvent): QuotaSnapshot | undefined {
-  if (event.type !== "quota_snapshot") {
-    return undefined;
-  }
-  return {
-    capturedAt: event.capturedAt,
-    source: "claude_statusline",
-    provenance: "claude_reported",
-    sessionId: event.sessionId,
-    promptId: event.promptId,
-    claudeVersion: event.claudeVersion,
-    fiveHour: event.fiveHour
-      ? {
-          value: event.fiveHour,
-          source: "claude_statusline",
-          capturedAt: event.capturedAt,
-          provenance: "claude_reported",
-          confidence: "high",
-        }
-      : undefined,
-    sevenDay: event.sevenDay
-      ? {
-          value: event.sevenDay,
-          source: "claude_statusline",
-          capturedAt: event.capturedAt,
-          provenance: "claude_reported",
-          confidence: "high",
-        }
-      : undefined,
-  };
 }
