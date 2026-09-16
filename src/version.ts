@@ -1,4 +1,4 @@
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
 export const DISPLAY_NAME = "PromptGauge";
 export const DEFAULT_DATA_DIR_NAME = ".promptgauge";
 export const EVENTS_FILE_NAME = "events.jsonl";

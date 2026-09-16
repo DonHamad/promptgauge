@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { HOOK_MARKER, HOOKS_STATE_FILE_NAME } from "../../version.js";
+import { resolveCliEntry } from "../../utils/cli-entry.js";
 import { copyFileAtomic, writeJsonAtomic } from "../../utils/atomic-write.js";
 import { quoteShellArg } from "../../utils/platform.js";
 import {
@@ -26,7 +26,7 @@ export function resolveHookCommand(io: SettingsIo): string {
 }
 
 function defaultCliEntry(): string {
-  return fileURLToPath(new URL("../../index.js", import.meta.url));
+  return resolveCliEntry();
 }
 
 function statePathFor(dataDir: string): string {

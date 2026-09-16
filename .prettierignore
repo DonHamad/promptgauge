@@ -1,3 +1,5 @@
 pnpm-lock.yaml
 tests/fixtures/statusline-malformed.json
 tests/fixtures/corrupted-events.jsonl
+plugin/runtime/promptgauge.cjs
+plugin/bin/promptgauge.cmd

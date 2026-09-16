@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { STATUSLINE_STATE_FILE_NAME, WRAPPER_MARKER } from "../../version.js";
+import { resolveCliEntry } from "../../utils/cli-entry.js";
 import { parseJson } from "../../utils/json.js";
 import { copyFileAtomic, writeJsonAtomic } from "../../utils/atomic-write.js";
 import { claudeConfigDir, quoteShellArg } from "../../utils/platform.js";
@@ -48,11 +48,7 @@ export function resolveWrapperCommand(io: SettingsIo): string {
 }
 
 function defaultCliEntry(): string {
-  const fromImport = fileURLToPath(new URL("../../index.js", import.meta.url));
-  if (fs.existsSync(fromImport)) {
-    return fromImport;
-  }
-  return fromImport;
+  return resolveCliEntry();
 }
 
 export function readSettingsFile(filePath: string):

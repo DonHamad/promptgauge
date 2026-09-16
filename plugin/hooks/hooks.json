@@ -1,12 +1,12 @@
 {
-  "description": "PromptGauge observe-only collector. Never stores prompt text or tool payloads. Does not block Claude Code.",
+  "description": "PromptGauge collector. Does not store prompt text or block Claude Code.",
   "hooks": {
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime/promptgauge.cjs\" collect --pg-hook",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime/promptgauge.cjs\" collect --pg-hook",
             "timeout": 10
           }
         ]
@@ -28,73 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "TaskCreated": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collect.cjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime/promptgauge.cjs\" collect --pg-hook",
             "timeout": 10
           }
         ]

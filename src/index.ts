@@ -1,14 +1,17 @@
 #!/usr/bin/env node
-import { fileURLToPath } from "node:url";
+import { resolveCliEntry } from "./utils/cli-entry.js";
 import { runCli } from "./cli/program.js";
 
-const code = await runCli(process.argv.slice(2), {
-  stdin: process.stdin,
-  stdout: process.stdout,
-  stderr: process.stderr,
-  env: process.env,
-  now: () => new Date(),
-  cliEntry: fileURLToPath(import.meta.url),
-});
+void main();
 
-process.exit(code);
+async function main(): Promise<void> {
+  const code = await runCli(process.argv.slice(2), {
+    stdin: process.stdin,
+    stdout: process.stdout,
+    stderr: process.stderr,
+    env: process.env,
+    now: () => new Date(),
+    cliEntry: resolveCliEntry(),
+  });
+  process.exit(code);
+}

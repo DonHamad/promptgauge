@@ -1,0 +1,18 @@
+{
+  "name": "promptgauge",
+  "owner": {
+    "name": "Hamad",
+    "url": "https://github.com/DonHamad"
+  },
+  "description": "Local usage observability and guardrails for Claude Code.",
+  "plugins": [
+    {
+      "name": "promptgauge",
+      "source": "./plugin",
+      "version": "0.4.0",
+      "description": "Local usage observability and guardrails for Claude Code.",
+      "homepage": "https://github.com/DonHamad/promptgauge",
+      "keywords": ["observability", "usage", "quota", "local-first"]
+    }
+  ]
+}

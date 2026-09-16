@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "coverage/**", "plugin/scripts/**"],
+    ignores: ["dist/**", "node_modules/**", "coverage/**", "plugin/runtime/**", "plugin/bin/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -26,7 +26,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["scripts/**/*.mjs", "eslint.config.js", "vitest.config.ts"],
+    files: ["scripts/**/*.mjs", "eslint.config.js", "vitest.config.ts", "scripts/build-plugin.mjs"],
     languageOptions: {
       globals: {
         process: "readonly",

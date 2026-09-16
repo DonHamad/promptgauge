@@ -1,6 +1,6 @@
 {
   "name": "promptgauge",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Local-first Claude Code usage observability: per-prompt and per-task accounting, live quota visibility, and runaway-usage guardrails.",
   "type": "module",
@@ -12,7 +12,8 @@
   },
   "packageManager": "pnpm@12.4.2",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-plugin.mjs",
+    "build:plugin": "node scripts/build-plugin.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -51,6 +52,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/node": "^24.3.1",
+    "esbuild": "^0.28.2",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.6.2",
