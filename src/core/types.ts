@@ -1,0 +1,137 @@
+/**
+ * Provenance is mandatory. A number without a source is not a metric.
+ *
+ * Never mix estimated token values with Claude-reported quota percentages
+ * without labeling them separately.
+ */
+export type MetricProvenance = "claude_reported" | "transcript_observed" | "derived" | "estimated";
+
+export type MetricConfidence = "high" | "medium" | "low" | "none";
+
+export interface ProvenancedMetric<T> {
+  value: T;
+  source: string;
+  capturedAt: string;
+  provenance: MetricProvenance;
+  confidence: MetricConfidence;
+}
+
+export type CircuitBreakerState = "NORMAL" | "WARNING" | "CRITICAL" | "EMERGENCY" | "UNKNOWN";
+
+export type CircuitBreakerMode = "observe" | "enforce";
+
+export type BurnLevel = "NORMAL" | "ELEVATED" | "HIGH" | "RUNAWAY" | "UNKNOWN";
+
+export type IntegrationStatus = "ACTIVE" | "INACTIVE" | "UNKNOWN";
+
+export interface QuotaWindow {
+  usedPercentage: number;
+  resetsAtEpochSeconds: number;
+}
+
+export interface QuotaSnapshot {
+  capturedAt: string;
+  source: "claude_statusline";
+  provenance: "claude_reported";
+  sessionId?: string;
+  promptId?: string;
+  claudeVersion?: string;
+  fiveHour?: ProvenancedMetric<QuotaWindow>;
+  sevenDay?: ProvenancedMetric<QuotaWindow>;
+}
+
+export type StoredEventType =
+  | "quota_snapshot"
+  | "prompt_lifecycle"
+  | "tool_activity"
+  | "subagent_activity"
+  | "task_lifecycle"
+  | "ingest_error";
+
+export interface StoredEventBase {
+  type: StoredEventType;
+  capturedAt: string;
+  ingestSource: "statusline" | "hook" | "cli";
+}
+
+export interface QuotaSnapshotEvent extends StoredEventBase {
+  type: "quota_snapshot";
+  sessionId?: string;
+  promptId?: string;
+  claudeVersion?: string;
+  fiveHour?: QuotaWindow;
+  sevenDay?: QuotaWindow;
+  provenance: "claude_reported";
+  source: "claude_statusline";
+}
+
+export type PromptPhase = "start" | "stop" | "stop_failure";
+
+export interface PromptLifecycleEvent extends StoredEventBase {
+  type: "prompt_lifecycle";
+  phase: PromptPhase;
+  sessionId?: string;
+  promptId?: string;
+  hookEventName: string;
+}
+
+export interface ToolActivityEvent extends StoredEventBase {
+  type: "tool_activity";
+  phase: "pre" | "post" | "post_failure";
+  sessionId?: string;
+  promptId?: string;
+  toolName?: string;
+  toolUseId?: string;
+  durationMs?: number;
+}
+
+export interface SubagentActivityEvent extends StoredEventBase {
+  type: "subagent_activity";
+  phase: "start" | "stop";
+  sessionId?: string;
+  promptId?: string;
+  agentId?: string;
+  agentType?: string;
+}
+
+export interface TaskLifecycleEvent extends StoredEventBase {
+  type: "task_lifecycle";
+  phase: "created" | "completed";
+  sessionId?: string;
+  promptId?: string;
+  taskId?: string;
+}
+
+export interface IngestErrorEvent extends StoredEventBase {
+  type: "ingest_error";
+  reason: string;
+}
+
+export type StoredEvent =
+  | QuotaSnapshotEvent
+  | PromptLifecycleEvent
+  | ToolActivityEvent
+  | SubagentActivityEvent
+  | TaskLifecycleEvent
+  | IngestErrorEvent;
+
+export interface PromptAttribution {
+  promptId?: string;
+  sessionId?: string;
+  startedAt?: string;
+  endedAt?: string;
+  open: boolean;
+  toolCallCount: number;
+  subagentStartCount: number;
+  taskCreatedCount: number;
+  quotaDeltaFiveHour?: ProvenancedMetric<number>;
+  quotaDeltaSevenDay?: ProvenancedMetric<number>;
+  limitation: string;
+}
+
+export interface SessionSummary {
+  sessionId?: string;
+  promptsObserved: number;
+  latestPrompt?: PromptAttribution;
+  latestQuota?: QuotaSnapshot;
+}
