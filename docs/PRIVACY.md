@@ -13,21 +13,23 @@ PromptGauge is local-first.
 - No telemetry is sent to PromptGauge maintainers.
 - `promptgauge doctor` prints `No credentials inspected.`
 
-## Status-line allowlist (Phase 2)
+## Status-line allowlist (Phase 3)
 
 Stored when present:
 
 - timestamp, `session_id`, `prompt_id`, Claude Code `version`
 - `model.id`, `model.display_name`
-- `rate_limits.five_hour` / `seven_day` (`used_percentage`, `resets_at`)
+- `rate_limits.five_hour` / `seven_day` / `spend_limit` (`used_percentage`, `resets_at`)
 - `cost.total_cost_usd` (estimated API-equivalent session cost)
 - `context_window` totals, percentages, and `current_usage` token/cache counts
 - derived cache hit ratio from official cache read/write token counts
+- allowlisted `prompt_cache` scalars: warm, caching_observed, ttl, expires_at, requests, misses, expected_rebuilds, hit_ratio, cache_write_tokens, miss_recache_tokens, recache_tokens_if_cold
 
 Not stored:
 
 - `transcript_path`, `cwd`, full project paths
 - prompt / assistant / tool / task text
-- undocumented `prompt_cache` or `spend_limit` objects (not in official status-line schema as of 2026-09-16)
+- `prompt_cache.last_miss_cause`, `prompt_cache.miss_causes`
+- background task commands/descriptions and session cron prompts
 
 If you find PromptGauge writing prompt bodies or source code to disk, that is a security bug. See SECURITY.md.

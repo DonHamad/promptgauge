@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-09-16
+
+Phase 3 local alpha: official schema correction, reversible hooks, per-prompt correlation.
+
+- Corrected `prompt_cache` and `rate_limits.spend_limit` as documented on status-line stdin (Claude Code v2.1.251+)
+- `promptgauge hooks install|uninstall|status` (additive, reversible)
+- `promptgauge prompts --limit N`
+- Bounded snapshot correlation for per-prompt quota/cost deltas
+- Privacy regression coverage for prompt and assistant sentinels
+
 ## 0.2.0 — 2026-09-16
 
 Phase 2 local alpha: non-destructive status-line installer.

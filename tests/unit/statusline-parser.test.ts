@@ -111,7 +111,46 @@ describe("status line parser", () => {
     }
   });
 
-  it("ignores out-of-range percentages", () => {
+  it("parses spend_limit above 100 and allowlisted prompt_cache fields", () => {
+    const result = parseStatusLine(
+      {
+        session_id: "s",
+        prompt_id: "p",
+        rate_limits: {
+          spend_limit: { used_percentage: 110.5, resets_at: 1893456000 },
+        },
+        prompt_cache: {
+          warm: true,
+          caching_observed: true,
+          ttl: "1h",
+          expires_at: 1738429200,
+          requests: 14,
+          misses: 2,
+          expected_rebuilds: 1,
+          hit_ratio: 0.91,
+          cache_write_tokens: 352000,
+          miss_recache_tokens: 310200,
+          recache_tokens_if_cold: 45000,
+          last_miss_cause: { causes: ["tools_changed"], tools_added: 2 },
+          miss_causes: { tools_changed: 2 },
+        },
+      },
+      capturedAt,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.event.spendLimit?.usedPercentage).toBe(110.5);
+    expect(result.event.promptCache?.hitRatio).toBe(0.91);
+    expect(result.event.promptCache?.ttl).toBe("1h");
+    const json = JSON.stringify(result.event);
+    expect(json).not.toContain("last_miss_cause");
+    expect(json).not.toContain("miss_causes");
+    expect(json).not.toContain("tools_changed");
+  });
+
+  it("treats five_hour over 100 as unavailable while still accepting spend_limit over 100", () => {
     const result = parseStatusLine(
       { rate_limits: { five_hour: { used_percentage: 140, resets_at: 1893456000 } } },
       capturedAt,

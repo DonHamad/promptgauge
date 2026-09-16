@@ -66,6 +66,25 @@ export interface ContextWindowTelemetry {
   derivedCacheHitRatio?: number;
 }
 
+/**
+ * Allowlisted prompt_cache fields from status-line stdin.
+ * Nested last_miss_cause / miss_causes objects are not stored.
+ * Official source: https://code.claude.com/docs/en/statusline (v2.1.251+)
+ */
+export interface PromptCacheTelemetry {
+  warm?: boolean;
+  cachingObserved?: boolean;
+  ttl?: "5m" | "1h";
+  expiresAtEpochSeconds?: number;
+  requests?: number;
+  misses?: number;
+  expectedRebuilds?: number;
+  hitRatio?: number;
+  cacheWriteTokens?: number;
+  missRecacheTokens?: number;
+  recacheTokensIfCold?: number;
+}
+
 export interface QuotaSnapshot {
   capturedAt: string;
   source: "claude_statusline";
@@ -76,8 +95,10 @@ export interface QuotaSnapshot {
   model?: ModelInfo;
   fiveHour?: ProvenancedMetric<QuotaWindow>;
   sevenDay?: ProvenancedMetric<QuotaWindow>;
+  spendLimit?: ProvenancedMetric<QuotaWindow>;
   estimatedApiCostUsd?: ProvenancedMetric<number>;
   contextWindow?: ContextWindowTelemetry;
+  promptCache?: PromptCacheTelemetry;
   projectKey?: string;
   projectBasename?: string;
 }
@@ -104,8 +125,10 @@ export interface QuotaSnapshotEvent extends StoredEventBase {
   model?: ModelInfo;
   fiveHour?: QuotaWindow;
   sevenDay?: QuotaWindow;
+  spendLimit?: QuotaWindow;
   estimatedApiCostUsd?: number;
   contextWindow?: ContextWindowTelemetry;
+  promptCache?: PromptCacheTelemetry;
   projectKey?: string;
   projectBasename?: string;
   provenance: "claude_reported";
@@ -120,6 +143,9 @@ export interface PromptLifecycleEvent extends StoredEventBase {
   sessionId?: string;
   promptId?: string;
   hookEventName: string;
+  projectKey?: string;
+  projectBasename?: string;
+  backgroundTaskCount?: number;
 }
 
 export interface ToolActivityEvent extends StoredEventBase {
@@ -162,6 +188,29 @@ export type StoredEvent =
   | TaskLifecycleEvent
   | IngestErrorEvent;
 
+export interface BracketedQuota {
+  before?: QuotaWindow;
+  after?: QuotaWindow;
+  delta?: ProvenancedMetric<number>;
+}
+
+export interface PromptUsageRecord {
+  sessionId?: string;
+  promptId: string;
+  startedAt?: string;
+  endedAt?: string;
+  durationMs?: number;
+  open: boolean;
+  fiveHour?: BracketedQuota;
+  sevenDay?: BracketedQuota;
+  spendLimit?: BracketedQuota;
+  estimatedSessionCostBefore?: number;
+  estimatedSessionCostAfter?: number;
+  estimatedSessionCostDelta?: ProvenancedMetric<number>;
+  exactPromptTokenConsumption: "unavailable";
+  correlation: string;
+}
+
 export interface PromptAttribution {
   promptId?: string;
   sessionId?: string;
@@ -177,6 +226,7 @@ export interface PromptAttribution {
   latestContextWindow?: ContextWindowTelemetry;
   exactPromptTokenConsumption: "unavailable";
   limitation: string;
+  usage?: PromptUsageRecord;
 }
 
 export interface SessionSummary {

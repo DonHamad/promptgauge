@@ -1,11 +1,12 @@
 import type {
   ContextCurrentUsage,
   ContextWindowTelemetry,
+  PromptCacheTelemetry,
   QuotaSnapshotEvent,
   QuotaWindow,
 } from "../../core/types.js";
 import { projectIdentityFromPath } from "../../core/privacy/project-id.js";
-import { asFiniteNumber, asString, isRecord } from "../../utils/json.js";
+import { asBoolean, asFiniteNumber, asString, isRecord } from "../../utils/json.js";
 
 export type StatusLineParseResult =
   | { ok: true; event: QuotaSnapshotEvent; sessionId?: string; promptId?: string }
@@ -18,7 +19,12 @@ export function looksLikeStatusLine(payload: Record<string, unknown>): boolean {
   if (asString(payload.hook_event_name)) {
     return false;
   }
-  return Boolean(payload.model) || Boolean(payload.rate_limits) || Boolean(payload.context_window);
+  return (
+    Boolean(payload.model) ||
+    Boolean(payload.rate_limits) ||
+    Boolean(payload.context_window) ||
+    Boolean(payload.prompt_cache)
+  );
 }
 
 export function parseStatusLine(payload: unknown, capturedAt: string): StatusLineParseResult {
@@ -46,10 +52,12 @@ export function parseStatusLine(payload: unknown, capturedAt: string): StatusLin
           displayName: asString(modelRaw.display_name),
         }
       : undefined,
-    fiveHour: parseWindow(rateLimits?.five_hour),
-    sevenDay: parseWindow(rateLimits?.seven_day),
+    fiveHour: parseWindow(rateLimits?.five_hour, { maxPercent: 100 }),
+    sevenDay: parseWindow(rateLimits?.seven_day, { maxPercent: 100 }),
+    spendLimit: parseWindow(rateLimits?.spend_limit, { maxPercent: Number.POSITIVE_INFINITY }),
     estimatedApiCostUsd: asFiniteNumber(costRaw?.total_cost_usd),
     contextWindow: parseContextWindow(payload.context_window),
+    promptCache: parsePromptCache(payload.prompt_cache),
     projectKey: project?.projectKey,
     projectBasename: project?.projectBasename,
     provenance: "claude_reported",
@@ -64,7 +72,7 @@ export function parseStatusLine(payload: unknown, capturedAt: string): StatusLin
   };
 }
 
-function parseWindow(value: unknown): QuotaWindow | undefined {
+function parseWindow(value: unknown, options: { maxPercent: number }): QuotaWindow | undefined {
   if (!isRecord(value)) {
     return undefined;
   }
@@ -73,10 +81,36 @@ function parseWindow(value: unknown): QuotaWindow | undefined {
   if (usedPercentage === undefined || resetsAtEpochSeconds === undefined) {
     return undefined;
   }
-  if (usedPercentage < 0 || usedPercentage > 100) {
+  if (usedPercentage < 0 || usedPercentage > options.maxPercent) {
     return undefined;
   }
   return { usedPercentage, resetsAtEpochSeconds };
+}
+
+function parsePromptCache(value: unknown): PromptCacheTelemetry | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const ttlRaw = asString(value.ttl);
+  const ttl = ttlRaw === "5m" || ttlRaw === "1h" ? ttlRaw : undefined;
+  const hitRatio = asFiniteNumber(value.hit_ratio);
+  const telemetry: PromptCacheTelemetry = {
+    warm: asBoolean(value.warm),
+    cachingObserved: asBoolean(value.caching_observed),
+    ttl,
+    expiresAtEpochSeconds: asFiniteNumber(value.expires_at),
+    requests: asFiniteNumber(value.requests),
+    misses: asFiniteNumber(value.misses),
+    expectedRebuilds: asFiniteNumber(value.expected_rebuilds),
+    hitRatio: hitRatio !== undefined && hitRatio >= 0 && hitRatio <= 1 ? hitRatio : undefined,
+    cacheWriteTokens: asFiniteNumber(value.cache_write_tokens),
+    missRecacheTokens: asFiniteNumber(value.miss_recache_tokens),
+    recacheTokensIfCold: asFiniteNumber(value.recache_tokens_if_cold),
+  };
+  if (Object.values(telemetry).every((item) => item === undefined)) {
+    return undefined;
+  }
+  return telemetry;
 }
 
 function parseContextWindow(value: unknown): ContextWindowTelemetry | undefined {

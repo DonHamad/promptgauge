@@ -2,8 +2,10 @@
  * Official Claude Code status-line fields we depend on.
  * Source: https://code.claude.com/docs/en/statusline (retrieved 2026-09-16)
  *
- * Not stored even when present: transcript_path, cwd, workspace paths.
- * prompt_cache and spend_limit are not documented on status-line stdin.
+ * Not stored even when present: transcript_path, cwd, workspace paths,
+ * prompt_cache.last_miss_cause, prompt_cache.miss_causes.
+ *
+ * spend_limit and prompt_cache are documented as of Claude Code v2.1.251.
  */
 export interface StatusLineModel {
   id?: string;
@@ -18,6 +20,7 @@ export interface StatusLineRateWindow {
 export interface StatusLineRateLimits {
   five_hour?: StatusLineRateWindow;
   seven_day?: StatusLineRateWindow;
+  spend_limit?: StatusLineRateWindow;
 }
 
 export interface StatusLineCost {
@@ -40,6 +43,20 @@ export interface StatusLineContextWindow {
   current_usage?: StatusLineContextUsage | null;
 }
 
+export interface StatusLinePromptCache {
+  warm?: boolean;
+  caching_observed?: boolean;
+  ttl?: string;
+  expires_at?: number | null;
+  requests?: number;
+  misses?: number;
+  expected_rebuilds?: number;
+  hit_ratio?: number | null;
+  cache_write_tokens?: number;
+  miss_recache_tokens?: number;
+  recache_tokens_if_cold?: number | null;
+}
+
 export interface StatusLineWorkspace {
   current_dir?: string;
   project_dir?: string;
@@ -57,5 +74,6 @@ export interface StatusLinePayload {
   rate_limits?: StatusLineRateLimits;
   cost?: StatusLineCost;
   context_window?: StatusLineContextWindow;
+  prompt_cache?: StatusLinePromptCache;
   workspace?: StatusLineWorkspace;
 }

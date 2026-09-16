@@ -29,8 +29,8 @@ If `rate_limits` is absent: display unavailable. Never invent a percentage.
 | `cost.total_cost_usd`                   | statusline docs                       | Client-side estimated session cost; may differ from bill           | Documented as estimated                                                        | Stored as CLAUDE_REPORTED_ESTIMATE; never treated as subscription billing | high (as estimate only) |
 | `context_window.*`                      | statusline docs                       | Tokens currently in the context window / latest API response       | `current_usage` may be null before the first API call                          | Stored as latest-response telemetry, not per-prompt tokens                | high                    |
 | `workspace.project_dir`                 | statusline docs                       | Launch directory                                                   | Documented                                                                     | Hashed to `projectKey`; basename only; path not stored                    | high                    |
-| `prompt_cache`                          | not on statusline schema              | n/a                                                                | **Not documented** on status-line stdin                                        | Not stored                                                                | high (absence)          |
-| `spend_limit`                           | not on statusline schema              | n/a                                                                | **Not documented** on status-line stdin                                        | Not stored                                                                | high (absence)          |
+| `prompt_cache`                          | statusline docs                       | Session prompt-cache stats for the main conversation               | v2.1.251+; after first API response; subagent requests excluded                | Stored allowlisted scalars only; nested miss-cause objects discarded      | high                    |
+| `rate_limits.spend_limit`               | statusline docs                       | Gateway spend-limit used % and reset; can exceed 100               | v2.1.251+; Claude apps gateway only; independently optional                    | UNAVAILABLE if absent; never treated as 5h/7d                             | high                    |
 | `hook_event_name`                       | older examples / some community notes | `"Status"` in some payloads                                        | Not in the current full schema example on 2026-09-16                           | Detection also uses `model` / `rate_limits` / `context_window`            | medium                  |
 
 ## Hooks (common fields)
@@ -71,6 +71,16 @@ If `rate_limits` is absent: display unavailable. Never invent a percentage.
 4. `UserPromptSubmit` stdout is injected into Claude's context. The collector prints nothing on hook events.
 5. `cost.total_cost_usd` is estimated API-equivalent session cost. Per-prompt cost delta is unavailable without a same-session baseline.
 6. Context-window token fields are latest API-response telemetry. Exact prompt token consumption remains UNAVAILABLE.
+7. `rate_limits.spend_limit` is a Claude apps gateway field (v2.1.251+). It is optional and is not 5-hour or 7-day subscription usage.
+8. Snapshot correlation for per-prompt deltas uses the nearest eligible same-session snapshot within 15 minutes, with a 5s start grace and 30s end grace. Snapshots are not assumed simultaneous with hooks. Failed rules yield UNAVAILABLE, not zero.
+
+## Snapshot correlation
+
+1. Require `UserPromptSubmit` and `Stop`/`StopFailure` for the same `prompt_id` and `session_id`.
+2. Baseline snapshot: same session, captured at or before start (+5s grace), not tagged with the current `prompt_id`, within 15 minutes.
+3. After snapshot: same session, captured between start and stop (+30s grace), `prompt_id` must match when present, within 15 minutes of stop.
+4. Quota delta additionally requires the same `resets_at` and a non-decreasing percentage.
+5. Cost delta requires a non-decreasing `cost.total_cost_usd`. An unchanged cost is a derived $0, which is not the same as missing data.
 
 ## Undocumented / unused on purpose
 
