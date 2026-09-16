@@ -1,0 +1,13 @@
+{
+  "name": "promptgauge",
+  "displayName": "PromptGauge",
+  "version": "0.1.0",
+  "description": "Local-first Claude Code usage observability and observe-only guardrails. Does not require Claude OAuth credentials.",
+  "author": {
+    "name": "Hamad"
+  },
+  "homepage": "https://github.com/hamad/promptgauge",
+  "repository": "https://github.com/hamad/promptgauge",
+  "license": "MIT",
+  "keywords": ["observability", "usage", "quota", "local-first"]
+}
