@@ -8,19 +8,25 @@ Prompt-level and task-level usage observability, live quota visibility, and loca
 
 PromptGauge is an independent open-source project and is not affiliated with or endorsed by Anthropic.
 
-## What works in this pre-release
+## What this pre-release does
 
-- Ingest Claude Code **status line** JSON and persist a sanitized quota snapshot when `rate_limits` is present.
-- Ingest documented Claude Code **hooks** (`UserPromptSubmit`, `Stop`, tool/subagent/task events) without storing prompt text or tool payloads.
-- `promptgauge status` prints observed 5-hour / 7-day quota when Claude Code reported it, otherwise `unavailable`.
-- `promptgauge doctor` checks local health and does not inspect credentials.
-- Circuit-breaker and burn detectors run in **observe-only** mode. They warn. They do not block Claude Code.
+- Local-first Claude Code usage observability
+- Claude-reported 5-hour / 7-day quota visibility where Claude Code exposes `rate_limits`
+- Prompt/task lifecycle correlation from documented hooks
+- Estimated API-equivalent cost attribution where a same-session baseline exists
+- Deterministic burn detection
+- Observe-only guardrails
+- Privacy-preserving status-line collection via a non-destructive wrapper
 
-## What this is not
+## What this pre-release does not claim
 
-- Not a proxy, not a Claude API wrapper, not a SaaS, and not a token vendor.
-- Not a claim of exact subscription consumption or guaranteed limit avoidance.
-- Quota percentages are **reported by Claude Code**. Quota deltas are **derived** and are not token counts.
+- Exact per-prompt token billing
+- Exact per-task subscription consumption
+- Guaranteed reduction in Claude usage
+- Automatic prevention of all runaway usage
+- Real-time blocking
+
+Quota percentages are **CLAUDE_REPORTED**. Quota deltas are **DERIVED**. `cost.total_cost_usd` is a **CLAUDE_REPORTED_ESTIMATE** of API-equivalent session cost, not Pro/Max subscription billing. Exact prompt token consumption is **UNAVAILABLE**.
 
 ## Requirements
 
@@ -33,22 +39,22 @@ PromptGauge is an independent open-source project and is not affiliated with or 
 pnpm install
 pnpm test
 pnpm build
-pnpm link --global
 ```
 
 ```bash
-promptgauge --help
-promptgauge doctor
-promptgauge status
+node dist/index.js --help
+node dist/index.js doctor
+node dist/index.js statusline install
+node dist/index.js status
 ```
 
-To observe live quota, Claude Code must send `rate_limits` to a status-line command. See `examples/claude-statusline.json` and [docs/CLAUDE_CODE_INTEGRATION.md](docs/CLAUDE_CODE_INTEGRATION.md).
+`promptgauge statusline install` wraps `~/.claude/settings.json` without discarding an existing `statusLine`. A second install does not double-wrap. `promptgauge statusline uninstall` restores the previous command where it was saved.
 
-Hook events are collected by the plugin under `plugin/` after you enable it locally. Hook stdout is kept empty so `UserPromptSubmit` does not inject collector output into Claude's context.
+If PromptGauge collection fails, the original status line still runs.
 
 ## Privacy
 
-PromptGauge runs locally. It does not need Claude OAuth credentials, does not upload prompts or project files, and does not send telemetry to PromptGauge maintainers. See [docs/PRIVACY.md](docs/PRIVACY.md).
+PromptGauge runs locally. It does not need Claude OAuth credentials, does not upload prompts or project files, and does not send telemetry to PromptGauge maintainers. Status-line stdin is parsed in memory; only an allowlisted subset is stored. See [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Documentation
 

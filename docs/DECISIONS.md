@@ -22,4 +22,16 @@ Hyphenated `prompt-gauge` is an unrelated 0-star token estimator. No npm package
 
 ## 2026-09-16 — Plugin cannot ship statusLine defaults
 
-Plugin `settings.json` currently supports `agent` and `subagentStatusLine` only. Document a user/project status-line snippet instead of pretending the plugin installs live quota automatically.
+Plugin `settings.json` currently supports `agent` and `subagentStatusLine` only. PromptGauge therefore installs a user-level status-line wrapper via `promptgauge statusline install`.
+
+## 2026-09-16 — Non-destructive status-line wrapper
+
+Claude Code supports one `statusLine` command. PromptGauge wraps it: collect allowlisted telemetry, then pass the original stdin to the previous command and return that command's stdout. Collection failures fail open. A second install does not double-wrap. Uninstall restores the saved previous `statusLine` object.
+
+## 2026-09-16 — No prompt_cache / spend_limit objects
+
+Official status-line docs expose cache telemetry as `context_window.current_usage.cache_*_input_tokens`, not a `prompt_cache` object, and do not document `spend_limit` on stdin. PromptGauge does not persist undocumented objects.
+
+## 2026-09-16 — Cost is estimated API-equivalent
+
+`cost.total_cost_usd` is documented as a client-side estimated session cost that may differ from the bill. Per-prompt cost deltas require a same-session baseline snapshot before `UserPromptSubmit` and an after snapshot at/after `Stop`. Missing baselines, session changes, and downward resets yield UNAVAILABLE, not zero.

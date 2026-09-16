@@ -1,9 +1,13 @@
-# Local plugin enablement
+# Local status-line enablement
 
-PromptGauge ships a Claude Code plugin under `plugin/`.
+Prefer:
 
-Official plugin settings currently apply only `agent` and `subagentStatusLine` from a plugin `settings.json`. Live quota is exposed on the **user/project status line**, not via plugin settings. Add the snippet in `claude-statusline.json` to `~/.claude/settings.json` (or project `.claude/settings.json`) if you want PromptGauge to observe `rate_limits`.
+```bash
+node dist/index.js statusline install
+```
 
-Enable the plugin from a local checkout after `pnpm build` and `pnpm link --global`.
+This wraps `~/.claude/settings.json` without deleting an existing `statusLine`.
 
-The collector prints nothing on hook events. `UserPromptSubmit` stdout would otherwise be injected into Claude's context.
+`claude-statusline.json` remains a manual snippet only if you want PromptGauge as the sole status line without using the installer.
+
+The wrapper prints nothing extra when a previous status line exists. Hook collectors still print nothing so `UserPromptSubmit` does not inject output into Claude's context.

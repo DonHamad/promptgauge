@@ -42,3 +42,14 @@ Official plugin `settings.json` currently supports `agent` and `subagentStatusLi
 ## Later HTML report
 
 `src/reporting` reads stored events. A future local HTML renderer can consume the same JSONL without coupling the core to a UI framework.
+
+## Status-line wrapper
+
+`promptgauge statusline install` writes a command that runs `statusline run --pg-wrapper`. That process:
+
+1. Reads Claude Code stdin once
+2. Extracts allowlisted fields into JSONL
+3. Forwards the original bytes to the previous `statusLine.command` if one existed
+4. Returns that command's first stdout line
+
+Collection errors are swallowed. Display fail-open.
