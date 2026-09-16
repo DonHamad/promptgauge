@@ -132,7 +132,7 @@ describe("collect + status integration", () => {
       env: { PROMPTGAUGE_FAKE_CLAUDE: "1" },
     });
     expect(doctor.out).toMatch(/Privacy\s+PASS/);
-    expect(doctor.out).toMatch(/Real Claude quota telemetry\s+PASS/);
+    expect(doctor.out).toMatch(/5-hour quota telemetry\s+PASS/);
     expect(doctor.out).toMatch(/Cost telemetry\s+PASS/);
     expect(doctor.out).toMatch(/Context token telemetry\s+PASS/);
   });
@@ -193,7 +193,7 @@ describe("doctor", () => {
     expect(doctor.out).toMatch(/Node\s+PASS/);
     expect(doctor.out).toMatch(/Local storage\s+PASS/);
     expect(doctor.out).toMatch(/Permissions\s+PASS/);
-    expect(doctor.out).toMatch(/Real Claude quota telemetry\s+UNAVAILABLE/);
+    expect(doctor.out).toMatch(/5-hour quota telemetry\s+UNAVAILABLE/);
     expect(doctor.out).toMatch(/PromptGauge statusLine integration\s+WARN/);
   });
 });
@@ -203,10 +203,11 @@ describe("cli flags", () => {
     const dataDir = tempDir();
     const help = await run(["--help"], { dataDir });
     expect(help.out).toMatch(/promptgauge status/);
-    expect(help.out).toMatch(/statusline install/);
+    expect(help.out).toMatch(/hooks install/);
+    expect(help.out).toMatch(/promptgauge prompts/);
     expect(help.out).toMatch(/pre-release/i);
     const version = await run(["--version"], { dataDir });
-    expect(version.out).toMatch(/0\.2\.0/);
+    expect(version.out).toMatch(/0\.3\.0/);
   });
 });
 
@@ -286,5 +287,95 @@ describe("statusline installer CLI", () => {
       statusLine: { command: string; padding: number };
     };
     expect(restored.statusLine).toEqual({ type: "command", command: "echo hi", padding: 2 });
+  });
+});
+
+describe("hooks installer CLI", () => {
+  it("installs UserPromptSubmit and Stop without dropping other hooks", async () => {
+    const dataDir = tempDir();
+    const claudeDir = path.join(dataDir, "claude-hooks");
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(claudeDir, "settings.json"),
+      `${JSON.stringify({
+        hooks: {
+          PreToolUse: [{ hooks: [{ type: "command", command: "echo other" }] }],
+          Stop: [{ hooks: [{ type: "command", command: "echo mine" }] }],
+        },
+      })}\n`,
+      "utf8",
+    );
+    const install = await run(["hooks", "install", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    expect(install.code).toBe(0);
+    const again = await run(["hooks", "install", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    expect(again.out).toMatch(/already installed/i);
+    await run(["hooks", "uninstall", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    const restored = JSON.parse(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf8")) as {
+      hooks: { PreToolUse: unknown[]; Stop: { hooks: { command: string }[] }[] };
+    };
+    expect(restored.hooks.PreToolUse).toHaveLength(1);
+    expect(restored.hooks.Stop).toHaveLength(1);
+    expect(restored.hooks.Stop[0]?.hooks[0]?.command).toBe("echo mine");
+  });
+
+  it("refuses corrupted settings", async () => {
+    const dataDir = tempDir();
+    const claudeDir = path.join(dataDir, "claude-hooks-bad");
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, "settings.json"), "{ no", "utf8");
+    const install = await run(["hooks", "install", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    expect(install.code).toBe(1);
+    expect(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf8")).toBe("{ no");
+  });
+});
+
+describe("prompts command", () => {
+  it("prints completed prompts without prompt text", async () => {
+    const dataDir = tempDir();
+    await run(["collect", "--data-dir", dataDir], {
+      dataDir,
+      stdin: JSON.stringify({
+        hook_event_name: "UserPromptSubmit",
+        session_id: "s",
+        prompt_id: "prompt-abc123",
+        prompt: "SUPER_SECRET_PROMPT_CONTENT_92841",
+      }),
+    });
+    await run(["collect", "--data-dir", dataDir], {
+      dataDir,
+      stdin: JSON.stringify({
+        hook_event_name: "Stop",
+        session_id: "s",
+        prompt_id: "prompt-abc123",
+        last_assistant_message: "SUPER_SECRET_ASSISTANT_CONTENT_19284",
+      }),
+    });
+    const out = await run(["prompts", "--limit", "10", "--data-dir", dataDir], { dataDir });
+    expect(out.out).toMatch(/PromptGauge — Recent Prompts/);
+    expect(out.out).toMatch(/c123/);
+    expect(out.out).not.toContain("SUPER_SECRET_PROMPT_CONTENT_92841");
+    expect(out.out).not.toContain("SUPER_SECRET_ASSISTANT_CONTENT_19284");
+  });
+
+  it("prints an empty-state when no completed prompts exist", async () => {
+    const dataDir = tempDir();
+    const out = await run(["prompts", "--data-dir", dataDir], { dataDir });
+    expect(out.out).toMatch(/No completed prompt records yet/);
   });
 });

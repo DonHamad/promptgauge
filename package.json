@@ -1,6 +1,6 @@
 {
   "name": "promptgauge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Local-first Claude Code usage observability: per-prompt and per-task accounting, live quota visibility, and runaway-usage guardrails.",
   "type": "module",

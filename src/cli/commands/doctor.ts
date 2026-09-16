@@ -11,7 +11,10 @@ import {
 import { looksLikeSecretFilename } from "../../utils/redact.js";
 import { isPromptGaugeWrapperCommand } from "../../claude/statusline/plan.js";
 import { readInstallState, readSettingsFile } from "../../claude/statusline/install.js";
+import { hasPromptGaugeHooks, type ClaudeHooksConfig } from "../../claude/hooks/plan.js";
 import { summarizeSession } from "../../core/accounting/session-summary.js";
+import { completedPromptIds } from "../../reporting/prompts.js";
+import { attributePrompt } from "../../core/attribution/prompt-lifecycle.js";
 
 export type CheckStatus = "PASS" | "FAIL" | "WARN" | "UNAVAILABLE" | "STALE" | "N/A";
 
@@ -39,12 +42,17 @@ export function runDoctor(ctx: DoctorContext): DoctorCheck[] {
   return [
     nodeCheck(ctx.nodeVersion),
     claudeBinaryCheck(ctx),
+    telemetryEvidenceCheck(ctx),
     claudeSettingsCheck(ctx),
     statusLineIntegrationCheck(ctx),
     existingStatusLinePreservedCheck(ctx),
-    quotaTelemetryCheck(ctx),
+    hookIntegrationCheck(ctx),
+    fiveHourTelemetryCheck(ctx),
+    sevenDayTelemetryCheck(ctx),
     costTelemetryCheck(ctx),
     contextTelemetryCheck(ctx),
+    promptLifecycleCheck(ctx),
+    promptAttributionCheck(ctx),
     privacyCheck(ctx),
     statusDataCheck(ctx),
     storageCheck(ctx),
@@ -170,26 +178,127 @@ function existingStatusLinePreservedCheck(ctx: DoctorContext): DoctorCheck {
   };
 }
 
-function quotaTelemetryCheck(ctx: DoctorContext): DoctorCheck {
+function telemetryEvidenceCheck(ctx: DoctorContext): DoctorCheck {
   const summary = summarizeSession(ctx.events);
-  const snap = summary.latestQuota;
-  if (!snap) {
-    return { name: "Real Claude quota telemetry", status: "UNAVAILABLE", detail: "no snapshots" };
-  }
-  if (isStale(snap.capturedAt, ctx.now, ctx.freshnessMs)) {
-    return { name: "Real Claude quota telemetry", status: "STALE", detail: snap.capturedAt };
-  }
-  if (!snap.fiveHour && !snap.sevenDay) {
+  if (summary.latestQuota) {
     return {
-      name: "Real Claude quota telemetry",
-      status: "UNAVAILABLE",
-      detail: "rate_limits absent on latest snapshot",
+      name: "Claude authentication / telemetry evidence",
+      status: isStale(summary.latestQuota.capturedAt, ctx.now, ctx.freshnessMs) ? "STALE" : "PASS",
+      detail: "status-line snapshot observed (credentials not inspected)",
+    };
+  }
+  const lifecycle = ctx.events.some((event) => event.type === "prompt_lifecycle");
+  if (lifecycle) {
+    return {
+      name: "Claude authentication / telemetry evidence",
+      status: "WARN",
+      detail: "hooks observed; no quota snapshot yet (credentials not inspected)",
     };
   }
   return {
-    name: "Real Claude quota telemetry",
-    status: "PASS",
-    detail: "Claude-reported windows present",
+    name: "Claude authentication / telemetry evidence",
+    status: "UNAVAILABLE",
+    detail: "no live Claude telemetry yet (credentials not inspected)",
+  };
+}
+
+function hookIntegrationCheck(ctx: DoctorContext): DoctorCheck {
+  const settingsPath = path.join(resolveClaudeConfigDir(ctx), "settings.json");
+  const loaded = readSettingsFile(settingsPath);
+  if (!loaded.ok) {
+    return { name: "Hook integration", status: "FAIL", detail: loaded.error };
+  }
+  if (!loaded.existed) {
+    return { name: "Hook integration", status: "WARN", detail: "not installed" };
+  }
+  const hooks = (loaded.value.hooks ?? {}) as ClaudeHooksConfig;
+  if (hasPromptGaugeHooks(hooks)) {
+    return {
+      name: "Hook integration",
+      status: "PASS",
+      detail: "UserPromptSubmit and Stop collectors installed",
+    };
+  }
+  return { name: "Hook integration", status: "WARN", detail: "PromptGauge hooks not installed" };
+}
+
+function fiveHourTelemetryCheck(ctx: DoctorContext): DoctorCheck {
+  return windowTelemetryCheck(ctx, "5-hour quota telemetry", (snap) => snap.fiveHour);
+}
+
+function sevenDayTelemetryCheck(ctx: DoctorContext): DoctorCheck {
+  return windowTelemetryCheck(ctx, "7-day quota telemetry", (snap) => snap.sevenDay);
+}
+
+function windowTelemetryCheck(
+  ctx: DoctorContext,
+  name: string,
+  pick: (snap: NonNullable<ReturnType<typeof summarizeSession>["latestQuota"]>) => unknown,
+): DoctorCheck {
+  const snap = summarizeSession(ctx.events).latestQuota;
+  if (!snap) {
+    return { name, status: "UNAVAILABLE", detail: "no snapshots" };
+  }
+  if (isStale(snap.capturedAt, ctx.now, ctx.freshnessMs)) {
+    return { name, status: "STALE", detail: snap.capturedAt };
+  }
+  if (!pick(snap)) {
+    return { name, status: "UNAVAILABLE", detail: "field absent on latest snapshot" };
+  }
+  return { name, status: "PASS", detail: "Claude-reported window present" };
+}
+
+function promptLifecycleCheck(ctx: DoctorContext): DoctorCheck {
+  const starts = ctx.events.filter(
+    (event) => event.type === "prompt_lifecycle" && event.phase === "start",
+  ).length;
+  const stops = ctx.events.filter(
+    (event) =>
+      event.type === "prompt_lifecycle" &&
+      (event.phase === "stop" || event.phase === "stop_failure"),
+  ).length;
+  if (starts === 0 && stops === 0) {
+    return {
+      name: "Prompt lifecycle",
+      status: "UNAVAILABLE",
+      detail: "no UserPromptSubmit/Stop yet",
+    };
+  }
+  if (starts > 0 && stops > 0) {
+    return {
+      name: "Prompt lifecycle",
+      status: "PASS",
+      detail: `${starts} start(s), ${stops} stop(s)`,
+    };
+  }
+  return {
+    name: "Prompt lifecycle",
+    status: "WARN",
+    detail: `${starts} start(s), ${stops} stop(s)`,
+  };
+}
+
+function promptAttributionCheck(ctx: DoctorContext): DoctorCheck {
+  const ids = completedPromptIds(ctx.events);
+  if (ids.length === 0) {
+    return { name: "Prompt attribution", status: "UNAVAILABLE", detail: "no completed prompts" };
+  }
+  const latestId = ids[ids.length - 1];
+  if (!latestId) {
+    return { name: "Prompt attribution", status: "UNAVAILABLE", detail: "no completed prompts" };
+  }
+  const attr = attributePrompt(ctx.events, latestId);
+  if (attr.estimatedApiCostDelta || attr.quotaDeltaFiveHour || attr.quotaDeltaSevenDay) {
+    return {
+      name: "Prompt attribution",
+      status: "PASS",
+      detail: "at least one derived metric on latest completed prompt",
+    };
+  }
+  return {
+    name: "Prompt attribution",
+    status: "WARN",
+    detail: "completed prompt without a valid snapshot pair (UNAVAILABLE, not zero)",
   };
 }
 

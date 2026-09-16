@@ -31,7 +31,7 @@ export interface InstallResult {
   message: string;
 }
 
-function settingsPathFor(io: SettingsIo): string {
+export function settingsPathFor(io: SettingsIo): string {
   const override = io.env?.CLAUDE_CONFIG_DIR;
   const dir = override && override.length > 0 ? override : claudeConfigDir(io.home);
   return path.join(dir, "settings.json");

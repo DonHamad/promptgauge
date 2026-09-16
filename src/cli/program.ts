@@ -11,6 +11,8 @@ import {
   uninstallStatusLine,
 } from "../claude/statusline/install.js";
 import { runStatusLineWrapper } from "../claude/statusline/wrapper.js";
+import { describeHooks, installHooks, uninstallHooks } from "../claude/hooks/install.js";
+import { formatPrompts } from "../reporting/prompts.js";
 
 export interface CliIo {
   stdin: NodeJS.ReadableStream;
@@ -82,6 +84,14 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
     case "statusline": {
       return runStatuslineCommand(parsed, io, dataDir, home, paths.eventsFile, now);
     }
+    case "hooks": {
+      return runHooksCommand(parsed, io, dataDir, home);
+    }
+    case "prompts": {
+      const { events } = readEvents(paths.eventsFile);
+      io.stdout.write(formatPrompts(events, parsed.limit ?? 10));
+      return 0;
+    }
     case "config": {
       io.stdout.write(`${JSON.stringify(loaded.config, null, 2)}\n`);
       if (loaded.warnings.length > 0) {
@@ -146,6 +156,38 @@ async function runStatuslineCommand(
   return 1;
 }
 
+async function runHooksCommand(
+  parsed: ParsedArgs,
+  io: CliIo,
+  dataDir: string,
+  home: string,
+): Promise<number> {
+  const settingsIo = {
+    home,
+    dataDir,
+    env: io.env,
+    now: io.now,
+    cliEntry: io.cliEntry,
+    nodeExecutable: process.execPath,
+  };
+  if (parsed.subcommand === "install") {
+    const result = installHooks(settingsIo);
+    io.stdout.write(`${result.message}\n`);
+    return result.ok ? 0 : 1;
+  }
+  if (parsed.subcommand === "uninstall") {
+    const result = uninstallHooks(settingsIo);
+    io.stdout.write(`${result.message}\n`);
+    return result.ok ? 0 : 1;
+  }
+  if (parsed.subcommand === "status" || parsed.subcommand === undefined) {
+    io.stdout.write(describeHooks(settingsIo));
+    return 0;
+  }
+  io.stderr.write("Usage: promptgauge hooks <install|uninstall|status>\n");
+  return 1;
+}
+
 interface ParsedArgs {
   command?: string;
   subcommand?: string;
@@ -154,6 +196,7 @@ interface ParsedArgs {
   dataDir?: string;
   now?: string;
   claudeMissing: boolean;
+  limit?: number;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -171,9 +214,12 @@ function parseArgs(argv: string[]): ParsedArgs {
     } else if (arg === "--now") {
       parsed.now = argv[i + 1];
       i += 1;
+    } else if (arg === "--limit") {
+      parsed.limit = Number.parseInt(argv[i + 1] ?? "", 10);
+      i += 1;
     } else if (arg === "--simulate-missing-claude") {
       parsed.claudeMissing = true;
-    } else if (arg === "--pg-wrapper") {
+    } else if (arg === "--pg-wrapper" || arg === "--pg-hook") {
       continue;
     } else if (arg?.startsWith("-")) {
       parsed.help = true;
@@ -199,9 +245,13 @@ See where your Claude Code usage goes.
 Usage:
   promptgauge status
   promptgauge doctor
+  promptgauge prompts [--limit 10]
   promptgauge statusline install
   promptgauge statusline uninstall
   promptgauge statusline status
+  promptgauge hooks install
+  promptgauge hooks uninstall
+  promptgauge hooks status
   promptgauge collect
   promptgauge config
   promptgauge report
@@ -211,9 +261,13 @@ Usage:
 Commands:
   status             Show observed quota snapshots and prompt counts
   doctor             Check local integration health (no credentials inspected)
+  prompts            Recent completed prompts without prompt text
   statusline install Non-destructive Claude Code status-line wrapper
   statusline uninstall Restore the previous statusLine where possible
   statusline status  Explain what is installed
+  hooks install      Add UserPromptSubmit and Stop collectors without replacing other hooks
+  hooks uninstall    Remove only PromptGauge hook handlers
+  hooks status       Explain which hooks are installed
   collect            Ingest Claude Code status-line or hook JSON from stdin
   config             Print the local configuration
   report             Print a local observation dump
@@ -221,6 +275,7 @@ Commands:
 Options:
   --data-dir <path>  Override local data directory
   --now <iso>        Evaluate time-dependent output at a fixed instant
+  --limit <n>        Number of prompts to show (default 10)
   -h, --help         Show this help
   -v, --version      Show version
 
@@ -228,6 +283,7 @@ PromptGauge is not affiliated with or endorsed by Anthropic.
 Live quota is shown only when Claude Code reports it.
 Estimated API-equivalent cost is not subscription billing.
 Exact per-prompt token consumption is unavailable.
+Circuit breaker is observe-only.
 `;
 }
 
