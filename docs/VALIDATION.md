@@ -28,14 +28,14 @@ guardrail/circuit-breaker architecture
 
 Phase 1 proves the collector pipeline and observe-only policies. It does not claim better cost estimates than transcript-based tools, because PromptGauge is not trying to reconstruct bills from JSONL pricing tables.
 
-## Name check (2026-09-16)
+## Name check (2026-09-16, rechecked before publication)
 
-| Name                                | Result                                             |
-| ----------------------------------- | -------------------------------------------------- |
-| npm `promptgauge`                   | not published (registry 404)                       |
-| npm `prompt-gauge`                  | not published (registry 404)                       |
-| GitHub `promptgauge`                | no current Claude Code observability project found |
-| GitHub `prompt-gauge`               | 0-star token estimator, different product          |
-| GitHub `PromptGauge_Research_Paper` | unrelated research paper                           |
+| Name                                | Result                                                                |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| npm `promptgauge`                   | unpublished (registry 404)                                            |
+| npm `prompt-gauge`                  | unpublished (registry 404)                                            |
+| GitHub `promptgauge`                | no Claude Code observability project using this exact name            |
+| GitHub `prompt-gauge`               | small token estimator (`dpathak1935/prompt-gauge`), different product |
+| GitHub `PromptGauge_Research_Paper` | unrelated research paper                                              |
 
-No direct current developer-tool conflict on the unhyphenated `promptgauge` name.
+No direct current Claude Code observability conflict on unhyphenated `promptgauge`. Publication uses repository `promptgauge` and display name PromptGauge.

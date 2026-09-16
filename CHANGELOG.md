@@ -2,13 +2,16 @@
 
 ## 0.3.0 — 2026-09-16
 
-Phase 3 local alpha: official schema correction, reversible hooks, per-prompt correlation.
+Phase 3 local alpha plus public repository preparation.
 
 - Corrected `prompt_cache` and `rate_limits.spend_limit` as documented on status-line stdin (Claude Code v2.1.251+)
 - `promptgauge hooks install|uninstall|status` (additive, reversible)
 - `promptgauge prompts --limit N`
 - Bounded snapshot correlation for per-prompt quota/cost deltas
 - Privacy regression coverage for prompt and assistant sentinels
+- Public GitHub publication docs: validation status, Pro/Max contributor check, security/issue templates
+
+Live Claude Pro/Max 5-hour and 7-day quota telemetry is implemented against official schemas and fixtures. It is not live-validated in this release.
 
 ## 0.2.0 — 2026-09-16
 

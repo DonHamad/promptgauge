@@ -4,9 +4,11 @@ Date: 2026-09-16
 
 Claude Code version detected: **2.1.273** via `npx @anthropic-ai/claude-code --version`
 
-`claude` is not on PATH. Credentials were not inspected.
+Credentials were not inspected.
 
-## Session
+This is **not** a project blocker. Development, tests, and GitHub publication continue without a Claude Pro/Max subscription.
+
+## What was attempted
 
 Print-mode ping:
 
@@ -14,37 +16,33 @@ Print-mode ping:
 npx @anthropic-ai/claude-code -p "..." --output-format text
 ```
 
-Result: `Not logged in · Please run /login`
-
-No interactive session was started. PromptGauge `events.jsonl` was not created.
+Result: not authenticated on this machine. No PromptGauge `events.jsonl` snapshot was created.
 
 ## Field observation
 
-| Field | Classification |
-| --- | --- |
-| `session_id` | BLOCKED BY LOGIN |
-| `prompt_id` | BLOCKED BY LOGIN |
-| `rate_limits.five_hour` | BLOCKED BY LOGIN |
-| `rate_limits.seven_day` | BLOCKED BY LOGIN |
-| `rate_limits.spend_limit` | BLOCKED BY LOGIN |
-| `cost.total_cost_usd` | BLOCKED BY LOGIN |
-| `context_window.*` | BLOCKED BY LOGIN |
-| `prompt_cache.*` | BLOCKED BY LOGIN |
+Live Pro/Max subscription windows were **not** observed. Classification:
 
-`spend_limit` and `prompt_cache` remain optional even after login. Absence after a valid authenticated interactive response would be NOT OBSERVED / NOT APPLICABLE, not a product failure.
+| Field                     | Classification              |
+| ------------------------- | --------------------------- |
+| `session_id`              | PENDING EXTERNAL VALIDATION |
+| `prompt_id`               | PENDING EXTERNAL VALIDATION |
+| `rate_limits.five_hour`   | PENDING EXTERNAL VALIDATION |
+| `rate_limits.seven_day`   | PENDING EXTERNAL VALIDATION |
+| `rate_limits.spend_limit` | PENDING EXTERNAL VALIDATION |
+| `cost.total_cost_usd`     | PENDING EXTERNAL VALIDATION |
+| `context_window.*`        | PENDING EXTERNAL VALIDATION |
+| `prompt_cache.*`          | PENDING EXTERNAL VALIDATION |
 
-## Installer state on this machine
+Parsers and synthetic fixtures for these fields are implemented. Official schema support is documented in [CLAUDE_CODE_INTEGRATION.md](../CLAUDE_CODE_INTEGRATION.md).
+
+`spend_limit` and `prompt_cache` remain optional even on a live account.
+
+## Installer state recorded on the maintainer machine
 
 - Status-line wrapper: installed
 - UserPromptSubmit / Stop hooks: installed
 - No previous user statusLine or third-party hooks were present
 
-## Manual action required
+## How to close the gap
 
-In a terminal:
-
-1. `npx @anthropic-ai/claude-code`
-2. `/login`
-3. Complete the Anthropic browser/account approval
-4. Submit a tiny interactive prompt (print mode `-p` may not invoke `statusLine`)
-5. Run `promptgauge doctor` and `promptgauge prompts`
+A Claude Pro/Max user can follow [PRO_MAX_VALIDATION.md](../PRO_MAX_VALIDATION.md) and file a sanitized availability report. Do not send credentials, prompts, or transcripts.

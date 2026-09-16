@@ -3,6 +3,7 @@
 PromptGauge is local-first.
 
 - Data stays on the machine in `PROMPTGAUGE_HOME` or `~/.promptgauge`.
+- No PromptGauge account and no PromptGauge cloud backend.
 - Prompt text is not stored. `privacy.storePromptText` is forced false in V1.
 - Tool arguments, tool results, assistant messages, and task titles are discarded.
 - Transcript files are not read.
