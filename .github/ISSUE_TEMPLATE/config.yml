@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security reporting
-    url: https://github.com/advisories
+    url: https://github.com/DonHamad/promptgauge/security/advisories/new
     about: See SECURITY.md. Do not file public issues that would expose users.
+  - name: Pro/Max validation guide
+    url: https://github.com/DonHamad/promptgauge/blob/main/docs/PRO_MAX_VALIDATION.md
+    about: How to report live quota field availability without secrets.

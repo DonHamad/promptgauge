@@ -3,6 +3,9 @@ description: Propose a documented, local-first change
 title: "feat: "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, prompt bodies, or private source.
   - type: textarea
     id: problem
     attributes:
@@ -10,9 +13,19 @@ body:
     validations:
       required: true
   - type: textarea
+    id: usecase
+    attributes:
+      label: Use case
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
     id: evidence
     attributes:
       label: Official Claude Code evidence
-      description: Link the docs field. No evidence = no claim.
-    validations:
-      required: true
+      description: Link the docs field when the change depends on Claude Code. No evidence = no claim.

@@ -5,11 +5,31 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: Do not include Claude OAuth tokens, prompt text, or project source.
-  - type: textarea
-    id: what
+      value: |
+        Do not paste Claude credentials, OAuth tokens, private prompts, private source code, or unredacted transcripts.
+  - type: dropdown
+    id: os
     attributes:
-      label: What happened
+      label: OS
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: v22.x
+    validations:
+      required: true
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+      placeholder: 2.1.x (or "unknown")
     validations:
       required: true
   - type: input
@@ -19,9 +39,25 @@ body:
     validations:
       required: true
   - type: textarea
-    id: repro
+    id: steps
     attributes:
-      label: Synthetic reproduction
-      description: Use fixtures or redacted JSON. No secrets.
+      label: Reproduction steps
     validations:
       required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Redact paths, prompts, and any token-like strings. Doctor output is usually enough.
