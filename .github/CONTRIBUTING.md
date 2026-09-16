@@ -20,7 +20,7 @@ Circuit-breaker enforcement is out of scope until it has dedicated tests.
 
 - Keep changes small.
 - Add fixtures when you touch parsers.
-- Update [docs/CLAUDE_CODE_INTEGRATION.md](docs/CLAUDE_CODE_INTEGRATION.md) if you depend on a new Claude Code field.
+- Update [docs/CLAUDE_CODE_INTEGRATION.md](../docs/CLAUDE_CODE_INTEGRATION.md) if you depend on a new Claude Code field.
 - Do not include credentials, private prompts, or transcripts in issues or PRs.
 
 ## Code of conduct

@@ -87,7 +87,7 @@ pnpm typecheck
 pnpm build
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 ## Roadmap
 

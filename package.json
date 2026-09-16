@@ -43,6 +43,11 @@
   "bugs": {
     "url": "https://github.com/DonHamad/promptgauge/issues"
   },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": false,
+    "trailingComma": "all"
+  },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/node": "^24.3.1",
