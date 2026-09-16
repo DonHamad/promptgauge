@@ -8,6 +8,7 @@ const PATTERNS = [
   { name: "anthropic-api-key", re: /sk-ant-[A-Za-z0-9_-]{8,}/g },
   { name: "github-pat", re: /github_pat_[A-Za-z0-9_]{20,}/g },
   { name: "github-token", re: /ghp_[A-Za-z0-9]{20,}/g },
+  { name: "github-oauth", re: /gho_[A-Za-z0-9]{20,}/g },
   { name: "generic-bearer", re: /Bearer\s+[A-Za-z0-9\-._~+/]+=*/g },
 ];
 
