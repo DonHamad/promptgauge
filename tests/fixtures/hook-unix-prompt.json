@@ -1,0 +1,8 @@
+{
+  "session_id": "session-unix",
+  "prompt_id": "prompt-unix",
+  "transcript_path": "/home/user/.claude/projects/app/session.jsonl",
+  "cwd": "/home/user/src/app",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "unix prompt text must never be stored"
+}

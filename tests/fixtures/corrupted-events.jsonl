@@ -1,0 +1,3 @@
+quota_snapshot	not-json
+{"type":"prompt_lifecycle","capturedAt":"2026-09-16T00:00:00.000Z","ingestSource":"hook","phase":"start","sessionId":"s1","promptId":"p1","hookEventName":"UserPromptSubmit"}
+{broken

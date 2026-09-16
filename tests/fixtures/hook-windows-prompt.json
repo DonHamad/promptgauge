@@ -1,0 +1,8 @@
+{
+  "session_id": "session-win",
+  "prompt_id": "prompt-win",
+  "transcript_path": "C:\\Users\\Hamad\\.claude\\projects\\app\\session.jsonl",
+  "cwd": "C:\\Users\\Hamad\\Desktop\\app",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "this text must never be stored"
+}

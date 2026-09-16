@@ -1,0 +1,8 @@
+{
+  "hook_event_name": "Status",
+  "session_id": "session-no-quota",
+  "prompt_id": "prompt-no-quota",
+  "model": {
+    "display_name": "Opus"
+  }
+}
