@@ -1,7 +1,5 @@
 # Security Policy
 
-## Product constraints
-
 PromptGauge:
 
 - does not need Claude OAuth credentials
@@ -11,27 +9,22 @@ PromptGauge:
 - must treat `~/.claude/settings.json` modifications as privileged: backup first, validate JSON, write atomically, preserve foreign hooks and an existing `statusLine`
 - must fail open for Claude Code display if collection fails
 
-If live quota is not exposed by Claude Code through a documented status-line field, PromptGauge displays unavailable. It will not fabricate a percentage.
+If Claude Code does not expose a quota field, PromptGauge reports it as unavailable.
 
 ## Reporting a vulnerability
 
 Do not open a public issue if disclosure would expose users.
 
-Use GitHub Security Advisories on this repository:
+Use GitHub Security Advisories:
 
 https://github.com/DonHamad/promptgauge/security/advisories/new
 
-Include:
+Include PromptGauge version, Claude Code version if relevant, a reproduction without secrets, and impact.
 
-- PromptGauge version
-- Claude Code version if relevant
-- Reproduction **without** secrets
-- Impact
-
-If you send credentials by accident, assume they are compromised and rotate them. Maintainers will redact them from materials and will not reuse them.
+If you send credentials by accident, assume they are compromised and rotate them. Maintainers will redact them and will not reuse them.
 
 There is no paid bug bounty.
 
 ## Secret scanning
 
-CI runs a local pattern scan (`pnpm scan:secrets`) in addition to GitHub’s default secret scanning on public repositories.
+CI runs `pnpm scan:secrets` in addition to GitHub’s default secret scanning on public repositories.

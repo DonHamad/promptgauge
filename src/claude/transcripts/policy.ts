@@ -1,8 +1,5 @@
 /**
- * Transcript JSONL files contain prompt text and tool payloads.
- * Phase 1 does not read transcripts:
- * - official docs warn they can lag the in-memory conversation
- * - they include content we refuse to store by default
- * - live quota is not documented on transcript records
+ * Transcript JSONL is not ingested: files can lag, they contain prompt and
+ * tool content, and quota is not documented there.
  */
 export const TRANSCRIPT_INGEST_ENABLED = false;

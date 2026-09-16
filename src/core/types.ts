@@ -1,9 +1,4 @@
-/**
- * Provenance is mandatory. A number without a source is not a metric.
- *
- * Never mix estimated token values with Claude-reported quota percentages
- * without labeling them separately.
- */
+/** Source of a stored metric. Quota percentages from Claude Code are `claude_reported`; session cost is an estimate; deltas are `derived`. */
 export type MetricProvenance =
   | "claude_reported"
   | "claude_reported_estimate"

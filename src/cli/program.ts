@@ -102,9 +102,7 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
     case "report": {
       const { events } = readEvents(paths.eventsFile);
       io.stdout.write(renderStatus(events, loaded.config, now));
-      io.stdout.write(
-        "\nNote: report is a local observation dump. It is not a billing statement.\nEstimated API-equivalent cost is not Pro/Max subscription billing.\n",
-      );
+      io.stdout.write("\nNote: this is a local observation dump, not a billing statement.\n");
       return 0;
     }
     case undefined:
@@ -279,11 +277,8 @@ Options:
   -h, --help         Show this help
   -v, --version      Show version
 
-PromptGauge is not affiliated with or endorsed by Anthropic.
-Live quota is shown only when Claude Code reports it.
-Estimated API-equivalent cost is not subscription billing.
-Exact per-prompt token consumption is unavailable.
-Circuit breaker is observe-only.
+PromptGauge is an independent open-source project and is not affiliated with Anthropic.
+Quota fields are shown when Claude Code exposes them.
 `;
 }
 

@@ -14,7 +14,7 @@ PromptGauge is local-first.
 - No telemetry is sent to PromptGauge maintainers.
 - `promptgauge doctor` prints `No credentials inspected.`
 
-## Status-line allowlist (Phase 3)
+## Status-line allowlist
 
 Stored when present:
 
@@ -33,4 +33,4 @@ Not stored:
 - `prompt_cache.last_miss_cause`, `prompt_cache.miss_causes`
 - background task commands/descriptions and session cron prompts
 
-If you find PromptGauge writing prompt bodies or source code to disk, that is a security bug. See SECURITY.md.
+If you find PromptGauge writing prompt bodies or source code to disk, that is a security bug. See [SECURITY.md](../SECURITY.md).

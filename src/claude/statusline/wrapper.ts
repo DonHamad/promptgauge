@@ -17,7 +17,7 @@ export function runStatusLineWrapper(raw: string, ctx: WrapperContext): string {
     const collect = ctx.collect ?? collectFromStdin;
     fallback = collect(raw, ctx.eventsFile, ctx.now).stdout;
   } catch {
-    // Fail open: telemetry must never hide the user's status line.
+    // Fail open so collection errors do not hide the user's status line.
   }
 
   const state = readInstallState(ctx.dataDir);
