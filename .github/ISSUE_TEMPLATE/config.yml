@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security reporting
-    url: https://github.com
+    url: https://github.com/advisories
     about: See SECURITY.md. Do not file public issues that would expose users.

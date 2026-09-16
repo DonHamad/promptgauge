@@ -35,10 +35,6 @@
   ],
   "license": "MIT",
   "author": "Hamad",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/hamad/promptgauge.git"
-  },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/node": "^24.3.1",

@@ -6,8 +6,6 @@
   "author": {
     "name": "Hamad"
   },
-  "homepage": "https://github.com/hamad/promptgauge",
-  "repository": "https://github.com/hamad/promptgauge",
   "license": "MIT",
   "keywords": ["observability", "usage", "quota", "local-first"]
 }
