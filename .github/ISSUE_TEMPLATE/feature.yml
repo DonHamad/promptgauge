@@ -1,11 +1,11 @@
 name: Feature request
-description: Propose a documented, local-first change
+description: Propose a local-first change
 title: "feat: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
-      value: Do not include credentials, prompt bodies, or private source.
+      value: Do not include credentials, private prompts, or transcripts.
   - type: textarea
     id: problem
     attributes:
@@ -24,8 +24,3 @@ body:
       label: Proposed behavior
     validations:
       required: true
-  - type: textarea
-    id: evidence
-    attributes:
-      label: Official Claude Code evidence
-      description: Link the docs field when the change depends on Claude Code. No evidence = no claim.

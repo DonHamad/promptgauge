@@ -1,5 +1,5 @@
 name: Bug report
-description: Report incorrect observed behavior
+description: Report incorrect behavior
 title: "bug: "
 labels: ["bug"]
 body:
@@ -29,7 +29,7 @@ body:
     id: claude
     attributes:
       label: Claude Code version
-      placeholder: 2.1.x (or "unknown")
+      placeholder: 2.1.x
     validations:
       required: true
   - type: input
@@ -41,23 +41,23 @@ body:
   - type: textarea
     id: steps
     attributes:
-      label: Reproduction steps
+      label: Steps to reproduce
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected result
+      label: Expected behavior
     validations:
       required: true
   - type: textarea
     id: actual
     attributes:
-      label: Actual result
+      label: Actual behavior
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: Sanitized logs
-      description: Redact paths, prompts, and any token-like strings. Doctor output is usually enough.
+      label: Relevant sanitized output
+      description: Redact paths, prompts, and anything that looks like a token.
