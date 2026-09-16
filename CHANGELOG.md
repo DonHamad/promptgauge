@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-09-16
+
+- Native Claude Code plugin and marketplace
+- Built-in UserPromptSubmit / Stop hooks
+- Slash commands: setup, status, doctor, uninstall
+- Bundled plugin runtime so users do not need to clone or build
+
 ## 0.3.0 — 2026-09-16
 
 - Status-line support for `prompt_cache` and `rate_limits.spend_limit` (Claude Code v2.1.251+)

@@ -6,10 +6,12 @@ PromptGauge is a local CLI. Core logic does not depend on a UI framework or a ne
 src/
   cli/           commands
   core/          accounting, attribution, quota, guardrails
-  claude/        schemas, parsers, status-line wrapper, hooks
+  claude/        schemas, parsers, status-line wrapper, hooks, plugin paths
   storage/       JSONL persistence
   reporting/     status and prompt output
   utils/
+plugin/          Claude Code plugin (hooks, skills, bundled runtime)
+.claude-plugin/  marketplace catalog
 ```
 
 ## Data flow
@@ -29,7 +31,7 @@ V1 uses JSONL: append-only, inspectable, easy to fixture. SQLite is a later opti
 
 Claude Code currently supports one `statusLine` command. Plugin settings can ship `agent` / `subagentStatusLine`, but not a default user `statusLine`.
 
-`promptgauge statusline install` writes a wrapper that:
+`/promptgauge:setup` (or `promptgauge setup`) writes a wrapper that:
 
 1. Reads Claude Code stdin once
 2. Stores allowlisted fields
@@ -40,11 +42,9 @@ Collection errors are swallowed so Claude's status line still displays.
 
 ## Hooks
 
-`promptgauge hooks install` appends `UserPromptSubmit` and `Stop` handlers. Other tools' hooks are left in place.
+The Claude Code plugin registers `UserPromptSubmit` and `Stop` handlers from `plugin/hooks/hooks.json`. `promptgauge hooks install` remains as a standalone fallback and appends the same collectors to user settings without replacing other hooks.
 
 The collector prints nothing on hook events. `UserPromptSubmit` stdout is injected into Claude's context, so extra output would leak into the prompt.
-
-Parsers also understand tool, subagent, and task hooks if those events arrive; the installer does not subscribe to them yet.
 
 ## Quota and correlation
 

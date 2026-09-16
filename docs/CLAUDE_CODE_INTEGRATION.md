@@ -51,3 +51,18 @@ Hook common input does not document `rate_limits`. Quota snapshots come from the
 5. Cost delta requires a non-decreasing `cost.total_cost_usd`.
 
 `Stop` is the documented end of a response, not a guaranteed exact token boundary.
+
+## Plugin
+
+Official sources: https://code.claude.com/docs/en/plugins and https://code.claude.com/docs/en/plugin-marketplaces
+
+- Hooks can ship in `plugin/hooks/hooks.json`. PromptGauge uses that for `UserPromptSubmit`, `Stop`, and `StopFailure`. Users do not add those hooks to `~/.claude/settings.json`.
+- Plugin `settings.json` currently supports only `agent` and `subagentStatusLine`. It cannot register the user `statusLine`. `/promptgauge:setup` is the one-time fallback.
+- Slash commands are plugin skills: `/promptgauge:setup`, `/promptgauge:status`, `/promptgauge:doctor`, `/promptgauge:uninstall`.
+- `${CLAUDE_PLUGIN_ROOT}` is the installed plugin directory. Hook commands quote that path so spaces work.
+- Marketplace metadata is `.claude-plugin/marketplace.json` at the repository root, with plugin source `./plugin`.
+- The plugin ships a bundled `plugin/runtime/promptgauge.cjs`. Users do not run `pnpm install` or `pnpm build`.
+- Install at user scope so PromptGauge applies across projects without writing into those repositories.
+- `plugin.json` `version` pins updates: `/plugin update` skips the plugin until that field changes.
+- Uninstall removes native plugin hooks automatically. Status-line setup lives in user settings, so run `/promptgauge:uninstall` first.
+- Installed cache must contain `.claude-plugin/plugin.json`, `hooks/hooks.json`, `runtime/promptgauge.cjs`, `skills/*/SKILL.md`, and `bin/promptgauge`.
