@@ -114,6 +114,29 @@ describe("collect + status integration", () => {
     expect(events[0]).toMatchObject({ type: "prompt_lifecycle", promptId: "prompt-win" });
   });
 
+  it("never persists transcript_path, cwd, or raw status-line stdin", async () => {
+    const dataDir = tempDir();
+    const fixture = fs.readFileSync(
+      path.join(import.meta.dirname, "../fixtures/statusline-full.json"),
+      "utf8",
+    );
+    await run(["collect", "--data-dir", dataDir], { dataDir, stdin: fixture });
+    const disk = fs.readFileSync(path.join(dataDir, "events.jsonl"), "utf8");
+    expect(disk).not.toContain("transcript_path");
+    expect(disk).not.toContain("/home/user/src/secret-app");
+    expect(disk).not.toContain(fixture);
+    expect(disk).toContain("session-full-1");
+    const doctor = await run(["doctor", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { PROMPTGAUGE_FAKE_CLAUDE: "1" },
+    });
+    expect(doctor.out).toMatch(/Privacy\s+PASS/);
+    expect(doctor.out).toMatch(/Real Claude quota telemetry\s+PASS/);
+    expect(doctor.out).toMatch(/Cost telemetry\s+PASS/);
+    expect(doctor.out).toMatch(/Context token telemetry\s+PASS/);
+  });
+
   it("skips corrupt local state and still reports remaining events", async () => {
     const dataDir = tempDir();
     fs.mkdirSync(dataDir, { recursive: true });
@@ -155,7 +178,7 @@ describe("doctor", () => {
       dataDir,
       home: dataDir,
     });
-    expect(doctor.out).toMatch(/Claude Code detected\s+FAIL/);
+    expect(doctor.out).toMatch(/Claude Code binary\s+FAIL/);
     expect(doctor.out).toMatch(/No credentials inspected/);
     expect(doctor.code).toBe(1);
   });
@@ -170,6 +193,8 @@ describe("doctor", () => {
     expect(doctor.out).toMatch(/Node\s+PASS/);
     expect(doctor.out).toMatch(/Local storage\s+PASS/);
     expect(doctor.out).toMatch(/Permissions\s+PASS/);
+    expect(doctor.out).toMatch(/Real Claude quota telemetry\s+UNAVAILABLE/);
+    expect(doctor.out).toMatch(/PromptGauge statusLine integration\s+WARN/);
   });
 });
 
@@ -178,8 +203,88 @@ describe("cli flags", () => {
     const dataDir = tempDir();
     const help = await run(["--help"], { dataDir });
     expect(help.out).toMatch(/promptgauge status/);
+    expect(help.out).toMatch(/statusline install/);
     expect(help.out).toMatch(/pre-release/i);
     const version = await run(["--version"], { dataDir });
-    expect(version.out).toMatch(/0\.1\.0/);
+    expect(version.out).toMatch(/0\.2\.0/);
+  });
+});
+
+describe("statusline installer CLI", () => {
+  it("installs into an empty Claude config dir and is reversible", async () => {
+    const dataDir = tempDir();
+    const claudeDir = path.join(dataDir, "claude-config");
+    const install = await run(["statusline", "install", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir, PROMPTGAUGE_FAKE_CLAUDE: "1" },
+    });
+    expect(install.code).toBe(0);
+    const settings = JSON.parse(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf8")) as {
+      statusLine: { command: string };
+    };
+    expect(settings.statusLine.command).toMatch(/statusline run/);
+    const again = await run(["statusline", "install", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    expect(again.out).toMatch(/already installed/i);
+    const status = await run(["statusline", "status", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    expect(status.out).toMatch(/Wrapper:\s+installed/);
+    const uninstall = await run(["statusline", "uninstall", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    expect(uninstall.code).toBe(0);
+    const after = JSON.parse(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf8")) as {
+      statusLine?: unknown;
+    };
+    expect(after.statusLine).toBeUndefined();
+  });
+
+  it("refuses to overwrite corrupted settings JSON", async () => {
+    const dataDir = tempDir();
+    const claudeDir = path.join(dataDir, "claude-bad");
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, "settings.json"), "{ not json", "utf8");
+    const install = await run(["statusline", "install", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    expect(install.code).toBe(1);
+    expect(install.out).toMatch(/malformed/);
+    expect(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf8")).toBe("{ not json");
+  });
+
+  it("restores a previous statusLine exactly", async () => {
+    const dataDir = tempDir();
+    const claudeDir = path.join(dataDir, "claude-existing");
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(claudeDir, "settings.json"),
+      `${JSON.stringify({ statusLine: { type: "command", command: "echo hi", padding: 2 } }, null, 2)}\n`,
+      "utf8",
+    );
+    await run(["statusline", "install", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    await run(["statusline", "uninstall", "--data-dir", dataDir], {
+      dataDir,
+      home: dataDir,
+      env: { CLAUDE_CONFIG_DIR: claudeDir },
+    });
+    const restored = JSON.parse(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf8")) as {
+      statusLine: { command: string; padding: number };
+    };
+    expect(restored.statusLine).toEqual({ type: "command", command: "echo hi", padding: 2 });
   });
 });

@@ -1,10 +1,19 @@
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { claudeConfigDir } from "../../utils/platform.js";
+import type { StoredEvent } from "../../core/types.js";
+import { eventLooksPrivate, findForbiddenKeys } from "../../core/privacy/allowlist.js";
+import { isStale } from "../../utils/time.js";
+import {
+  claudeConfigDir,
+  locateClaudeBinary,
+  type ClaudeBinaryProbe,
+} from "../../utils/platform.js";
 import { looksLikeSecretFilename } from "../../utils/redact.js";
+import { isPromptGaugeWrapperCommand } from "../../claude/statusline/plan.js";
+import { readInstallState, readSettingsFile } from "../../claude/statusline/install.js";
+import { summarizeSession } from "../../core/accounting/session-summary.js";
 
-export type CheckStatus = "PASS" | "FAIL" | "WARN";
+export type CheckStatus = "PASS" | "FAIL" | "WARN" | "UNAVAILABLE" | "STALE" | "N/A";
 
 export interface DoctorCheck {
   name: string;
@@ -19,14 +28,24 @@ export interface DoctorContext {
   skippedCorruptLines: number;
   home: string;
   env: NodeJS.ProcessEnv;
-  claudeVersionCommand?: () => { ok: boolean; version?: string };
+  events: StoredEvent[];
+  now: Date;
+  freshnessMs: number;
+  claudeVersionCommand?: () =>
+    ClaudeBinaryProbe | { ok?: boolean; found?: boolean; version?: string; path?: string };
 }
 
 export function runDoctor(ctx: DoctorContext): DoctorCheck[] {
   return [
     nodeCheck(ctx.nodeVersion),
-    claudeCodeCheck(ctx),
-    pluginCheck(ctx),
+    claudeBinaryCheck(ctx),
+    claudeSettingsCheck(ctx),
+    statusLineIntegrationCheck(ctx),
+    existingStatusLinePreservedCheck(ctx),
+    quotaTelemetryCheck(ctx),
+    costTelemetryCheck(ctx),
+    contextTelemetryCheck(ctx),
+    privacyCheck(ctx),
     statusDataCheck(ctx),
     storageCheck(ctx),
     permissionsCheck(ctx),
@@ -37,7 +56,7 @@ export function formatDoctor(checks: DoctorCheck[]): string {
   const lines = ["PromptGauge Doctor", ""];
   const width = Math.max(...checks.map((check) => check.name.length));
   for (const check of checks) {
-    lines.push(`${check.name.padEnd(width)}  ${check.status.padEnd(4)}  ${check.detail}`);
+    lines.push(`${check.name.padEnd(width)}  ${check.status.padEnd(12)}  ${check.detail}`);
   }
   lines.push("");
   lines.push("No credentials inspected.");
@@ -60,62 +79,164 @@ function resolveClaudeConfigDir(ctx: DoctorContext): string {
   return claudeConfigDir(ctx.home);
 }
 
-function claudeCodeCheck(ctx: DoctorContext): DoctorCheck {
-  const probe = ctx.claudeVersionCommand ?? defaultClaudeVersion;
+function claudeBinaryCheck(ctx: DoctorContext): DoctorCheck {
+  const probe = ctx.claudeVersionCommand ?? (() => locateClaudeBinary(ctx.env, ctx.home));
   const result = probe();
-  if (result.ok) {
+  const found = result.ok === true || result.found === true;
+  if (found) {
     return {
-      name: "Claude Code detected",
+      name: "Claude Code binary",
       status: "PASS",
-      detail: result.version ?? "claude command found",
+      detail: result.version ?? result.path ?? "claude command found",
     };
   }
   const configDir = resolveClaudeConfigDir(ctx);
   if (fs.existsSync(configDir) && fs.statSync(configDir).isDirectory()) {
     return {
-      name: "Claude Code detected",
+      name: "Claude Code binary",
       status: "WARN",
       detail: "config directory present; claude binary not on PATH",
     };
   }
-  return { name: "Claude Code detected", status: "FAIL", detail: "claude command not found" };
+  return { name: "Claude Code binary", status: "FAIL", detail: "claude command not found" };
 }
 
-function pluginCheck(ctx: DoctorContext): DoctorCheck {
+function claudeSettingsCheck(ctx: DoctorContext): DoctorCheck {
   const settingsPath = path.join(resolveClaudeConfigDir(ctx), "settings.json");
   if (!fs.existsSync(settingsPath)) {
-    return {
-      name: "Plugin integration",
-      status: "WARN",
-      detail: "no Claude Code user settings.json found",
-    };
+    return { name: "Claude settings", status: "WARN", detail: "no settings.json found" };
   }
   if (looksLikeSecretFilename(path.basename(settingsPath))) {
+    return { name: "Claude settings", status: "FAIL", detail: "refused to inspect a secret file" };
+  }
+  const loaded = readSettingsFile(settingsPath);
+  if (!loaded.ok) {
+    return { name: "Claude settings", status: "FAIL", detail: loaded.error };
+  }
+  return { name: "Claude settings", status: "PASS", detail: settingsPath };
+}
+
+function statusLineIntegrationCheck(ctx: DoctorContext): DoctorCheck {
+  const settingsPath = path.join(resolveClaudeConfigDir(ctx), "settings.json");
+  const loaded = readSettingsFile(settingsPath);
+  if (!loaded.ok) {
+    return { name: "PromptGauge statusLine integration", status: "FAIL", detail: loaded.error };
+  }
+  if (!loaded.existed) {
     return {
-      name: "Plugin integration",
-      status: "FAIL",
-      detail: "refused to inspect a secret file",
+      name: "PromptGauge statusLine integration",
+      status: "WARN",
+      detail: "not installed",
     };
   }
-  let text: string;
-  try {
-    text = fs.readFileSync(settingsPath, "utf8");
-  } catch {
-    return { name: "Plugin integration", status: "WARN", detail: "could not read settings.json" };
-  }
-  const mentions = /promptgauge/i.test(text);
-  if (mentions) {
+  const command = statusLineCommand(loaded.value);
+  if (isPromptGaugeWrapperCommand(command)) {
     return {
-      name: "Plugin integration",
+      name: "PromptGauge statusLine integration",
       status: "PASS",
-      detail: "promptgauge referenced in settings.json",
+      detail: "wrapper installed",
     };
   }
   return {
-    name: "Plugin integration",
+    name: "PromptGauge statusLine integration",
     status: "WARN",
-    detail: "settings.json present but PromptGauge not referenced",
+    detail: command ? "statusLine present but not wrapped" : "no statusLine configured",
   };
+}
+
+function existingStatusLinePreservedCheck(ctx: DoctorContext): DoctorCheck {
+  const state = readInstallState(ctx.dataDir);
+  const settingsPath = path.join(resolveClaudeConfigDir(ctx), "settings.json");
+  const loaded = readSettingsFile(settingsPath);
+  const command = loaded.ok ? statusLineCommand(loaded.value) : "";
+  if (!isPromptGaugeWrapperCommand(command)) {
+    return {
+      name: "Existing statusLine preserved",
+      status: "N/A",
+      detail: "PromptGauge wrapper is not installed",
+    };
+  }
+  if (state?.previousExisted) {
+    return {
+      name: "Existing statusLine preserved",
+      status: "PASS",
+      detail: state.previousStatusLine?.command ?? "previous statusLine stored",
+    };
+  }
+  return {
+    name: "Existing statusLine preserved",
+    status: "N/A",
+    detail: "no previous statusLine",
+  };
+}
+
+function quotaTelemetryCheck(ctx: DoctorContext): DoctorCheck {
+  const summary = summarizeSession(ctx.events);
+  const snap = summary.latestQuota;
+  if (!snap) {
+    return { name: "Real Claude quota telemetry", status: "UNAVAILABLE", detail: "no snapshots" };
+  }
+  if (isStale(snap.capturedAt, ctx.now, ctx.freshnessMs)) {
+    return { name: "Real Claude quota telemetry", status: "STALE", detail: snap.capturedAt };
+  }
+  if (!snap.fiveHour && !snap.sevenDay) {
+    return {
+      name: "Real Claude quota telemetry",
+      status: "UNAVAILABLE",
+      detail: "rate_limits absent on latest snapshot",
+    };
+  }
+  return {
+    name: "Real Claude quota telemetry",
+    status: "PASS",
+    detail: "Claude-reported windows present",
+  };
+}
+
+function costTelemetryCheck(ctx: DoctorContext): DoctorCheck {
+  const summary = summarizeSession(ctx.events);
+  if (summary.latestQuota?.estimatedApiCostUsd) {
+    return {
+      name: "Cost telemetry",
+      status: "PASS",
+      detail: `estimated API-equivalent $${summary.latestQuota.estimatedApiCostUsd.value.toFixed(5)}`,
+    };
+  }
+  return {
+    name: "Cost telemetry",
+    status: "UNAVAILABLE",
+    detail: "cost.total_cost_usd not observed",
+  };
+}
+
+function contextTelemetryCheck(ctx: DoctorContext): DoctorCheck {
+  const summary = summarizeSession(ctx.events);
+  if (summary.latestQuota?.contextWindow) {
+    return {
+      name: "Context token telemetry",
+      status: "PASS",
+      detail: "latest API response context stored",
+    };
+  }
+  return {
+    name: "Context token telemetry",
+    status: "UNAVAILABLE",
+    detail: "context_window not observed",
+  };
+}
+
+function privacyCheck(ctx: DoctorContext): DoctorCheck {
+  for (const event of ctx.events) {
+    const forbidden = findForbiddenKeys(event);
+    if (forbidden.length > 0 || eventLooksPrivate(event)) {
+      return {
+        name: "Privacy",
+        status: "FAIL",
+        detail: `prohibited field in local log: ${forbidden[0] ?? "pattern match"}`,
+      };
+    }
+  }
+  return { name: "Privacy", status: "PASS", detail: "no prohibited fields stored" };
 }
 
 function statusDataCheck(ctx: DoctorContext): DoctorCheck {
@@ -153,15 +274,11 @@ function permissionsCheck(ctx: DoctorContext): DoctorCheck {
   }
 }
 
-function defaultClaudeVersion(): { ok: boolean; version?: string } {
-  const result = spawnSync("claude", ["--version"], {
-    encoding: "utf8",
-    timeout: 4000,
-    windowsHide: true,
-  });
-  if (result.status === 0) {
-    const version = (result.stdout || result.stderr).trim().split(/\r?\n/)[0];
-    return { ok: true, version };
+function statusLineCommand(settings: Record<string, unknown>): string {
+  const statusLine = settings.statusLine;
+  if (typeof statusLine !== "object" || statusLine === null) {
+    return "";
   }
-  return { ok: false };
+  const command = (statusLine as { command?: unknown }).command;
+  return typeof command === "string" ? command : "";
 }

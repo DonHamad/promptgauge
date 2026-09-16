@@ -5,6 +5,12 @@ import { readEvents } from "../storage/jsonl.js";
 import { ensureDataDir, resolveDataDir, resolvePaths } from "../storage/paths.js";
 import { collectFromStdin } from "./commands/collect.js";
 import { formatDoctor, runDoctor } from "./commands/doctor.js";
+import {
+  describeStatusLine,
+  installStatusLine,
+  uninstallStatusLine,
+} from "../claude/statusline/install.js";
+import { runStatusLineWrapper } from "../claude/statusline/wrapper.js";
 
 export interface CliIo {
   stdin: NodeJS.ReadableStream;
@@ -15,6 +21,7 @@ export interface CliIo {
   readStdin?: () => Promise<string>;
   nodeVersion?: string;
   home?: string;
+  cliEntry?: string;
 }
 
 export async function runCli(argv: string[], io: CliIo): Promise<number> {
@@ -34,6 +41,7 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
   writeDefaultConfig(dataDir);
   const loaded = loadConfig(dataDir);
   const now = parsed.now ? new Date(parsed.now) : io.now();
+  const home = io.home ?? defaultHome(io.env);
 
   switch (parsed.command) {
     case "status": {
@@ -48,8 +56,11 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
         dataDir,
         eventsExist: events.length > 0,
         skippedCorruptLines,
-        home: io.home ?? defaultHome(io.env),
+        home,
         env: io.env,
+        events,
+        now,
+        freshnessMs: loaded.config.freshnessMs,
         claudeVersionCommand: parsed.claudeMissing
           ? () => ({ ok: false })
           : io.env.PROMPTGAUGE_FAKE_CLAUDE === "1"
@@ -67,6 +78,10 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
       }
       return 0;
     }
+    case "install":
+    case "statusline": {
+      return runStatuslineCommand(parsed, io, dataDir, home, paths.eventsFile, now);
+    }
     case "config": {
       io.stdout.write(`${JSON.stringify(loaded.config, null, 2)}\n`);
       if (loaded.warnings.length > 0) {
@@ -78,7 +93,7 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
       const { events } = readEvents(paths.eventsFile);
       io.stdout.write(renderStatus(events, loaded.config, now));
       io.stdout.write(
-        "\nNote: report is a local observation dump. It is not a billing statement.\n",
+        "\nNote: report is a local observation dump. It is not a billing statement.\nEstimated API-equivalent cost is not Pro/Max subscription billing.\n",
       );
       return 0;
     }
@@ -91,8 +106,49 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
   }
 }
 
+async function runStatuslineCommand(
+  parsed: ParsedArgs,
+  io: CliIo,
+  dataDir: string,
+  home: string,
+  eventsFile: string,
+  now: Date,
+): Promise<number> {
+  const sub = parsed.command === "install" ? "install" : parsed.subcommand;
+  const settingsIo = {
+    home,
+    dataDir,
+    env: io.env,
+    now: () => now,
+    cliEntry: io.cliEntry,
+    nodeExecutable: process.execPath,
+  };
+  if (sub === "install") {
+    const result = installStatusLine(settingsIo);
+    io.stdout.write(`${result.message}\n`);
+    return result.ok ? 0 : 1;
+  }
+  if (sub === "uninstall") {
+    const result = uninstallStatusLine(settingsIo);
+    io.stdout.write(`${result.message}\n`);
+    return result.ok ? 0 : 1;
+  }
+  if (sub === "status" || sub === undefined) {
+    io.stdout.write(describeStatusLine(settingsIo));
+    return 0;
+  }
+  if (sub === "run") {
+    const raw = io.readStdin ? await io.readStdin() : await readAll(io.stdin);
+    io.stdout.write(runStatusLineWrapper(raw, { eventsFile, dataDir, now }));
+    return 0;
+  }
+  io.stderr.write("Usage: promptgauge statusline <install|uninstall|status>\n");
+  return 1;
+}
+
 interface ParsedArgs {
   command?: string;
+  subcommand?: string;
   help: boolean;
   version: boolean;
   dataDir?: string;
@@ -117,6 +173,8 @@ function parseArgs(argv: string[]): ParsedArgs {
       i += 1;
     } else if (arg === "--simulate-missing-claude") {
       parsed.claudeMissing = true;
+    } else if (arg === "--pg-wrapper") {
+      continue;
     } else if (arg?.startsWith("-")) {
       parsed.help = true;
     } else if (arg) {
@@ -124,6 +182,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
   }
   parsed.command = rest[0];
+  parsed.subcommand = rest[1];
   if (!parsed.command && !parsed.version) {
     parsed.help = true;
   }
@@ -140,6 +199,9 @@ See where your Claude Code usage goes.
 Usage:
   promptgauge status
   promptgauge doctor
+  promptgauge statusline install
+  promptgauge statusline uninstall
+  promptgauge statusline status
   promptgauge collect
   promptgauge config
   promptgauge report
@@ -147,11 +209,14 @@ Usage:
   promptgauge --version
 
 Commands:
-  status    Show observed quota snapshots and prompt counts
-  doctor    Check local integration health (no credentials inspected)
-  collect   Ingest Claude Code status-line or hook JSON from stdin
-  config    Print the local configuration
-  report    Print a local observation dump
+  status             Show observed quota snapshots and prompt counts
+  doctor             Check local integration health (no credentials inspected)
+  statusline install Non-destructive Claude Code status-line wrapper
+  statusline uninstall Restore the previous statusLine where possible
+  statusline status  Explain what is installed
+  collect            Ingest Claude Code status-line or hook JSON from stdin
+  config             Print the local configuration
+  report             Print a local observation dump
 
 Options:
   --data-dir <path>  Override local data directory
@@ -161,6 +226,8 @@ Options:
 
 PromptGauge is not affiliated with or endorsed by Anthropic.
 Live quota is shown only when Claude Code reports it.
+Estimated API-equivalent cost is not subscription billing.
+Exact per-prompt token consumption is unavailable.
 `;
 }
 
