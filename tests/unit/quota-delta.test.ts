@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { costDeltaUsd, quotaDelta } from "../../src/core/quota/delta.js";
-import { estimatedApiCostDeltaForPrompt } from "../../src/core/quota/delta.js";
+import { estimatedApiCostDeltaForPrompt } from "../../src/core/attribution/correlate.js";
 import type { StoredEvent } from "../../src/core/types.js";
 
 describe("quota delta guards", () => {

@@ -75,14 +75,29 @@ describe("hook parser", () => {
     expect(result.events[0]).toMatchObject({ type: "task_lifecycle", taskId: "task-001" });
   });
 
-  it("maps Stop to prompt end", () => {
+  it("maps Stop to prompt end without assistant text or commands", () => {
     const result = parseHook(
-      { hook_event_name: "Stop", session_id: "s", prompt_id: "p" },
+      {
+        hook_event_name: "Stop",
+        session_id: "s",
+        prompt_id: "p",
+        last_assistant_message: "SUPER_SECRET_ASSISTANT_CONTENT_19284",
+        transcript_path: "/tmp/t.jsonl",
+        background_tasks: [{ command: "rm -rf /", description: "bad" }],
+      },
       capturedAt,
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.events[0]).toMatchObject({ type: "prompt_lifecycle", phase: "stop" });
+      expect(result.events[0]).toMatchObject({
+        type: "prompt_lifecycle",
+        phase: "stop",
+        backgroundTaskCount: 1,
+      });
+      const json = JSON.stringify(result.events);
+      expect(json).not.toContain("SUPER_SECRET_ASSISTANT_CONTENT_19284");
+      expect(json).not.toContain("rm -rf");
+      expect(json).not.toContain("transcript_path");
     }
   });
 });

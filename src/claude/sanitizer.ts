@@ -11,6 +11,8 @@ const FORBIDDEN_KEYS = new Set([
   "content",
   "current_dir",
   "project_dir",
+  "background_tasks",
+  "session_crons",
 ]);
 
 export function assertNoForbiddenFields(event: Record<string, unknown>): void {

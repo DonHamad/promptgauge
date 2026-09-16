@@ -14,7 +14,9 @@ const FORBIDDEN_KEYS = new Set([
   "content",
   "raw",
   "stdin",
-  "payload",
+  "session_crons",
+  "background_tasks",
+  "description",
 ]);
 
 export function findForbiddenKeys(value: unknown, trail = ""): string[] {

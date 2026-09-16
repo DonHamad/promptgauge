@@ -4,6 +4,16 @@ import type { StoredEvent } from "../../src/core/types.js";
 
 const events: StoredEvent[] = [
   {
+    type: "quota_snapshot",
+    capturedAt: "2026-09-16T03:59:58.000Z",
+    ingestSource: "statusline",
+    sessionId: "sess-1",
+    provenance: "claude_reported",
+    source: "claude_statusline",
+    fiveHour: { usedPercentage: 10, resetsAtEpochSeconds: 1893456000 },
+    estimatedApiCostUsd: 0.01,
+  },
+  {
     type: "prompt_lifecycle",
     capturedAt: "2026-09-16T04:00:00.000Z",
     ingestSource: "hook",

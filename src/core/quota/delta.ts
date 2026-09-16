@@ -95,44 +95,15 @@ export function toSnapshot(event: Extract<StoredEvent, { type: "quota_snapshot" 
           confidence: "high",
         }
       : undefined,
+    spendLimit: event.spendLimit
+      ? {
+          value: event.spendLimit,
+          source: "claude_statusline",
+          capturedAt: event.capturedAt,
+          provenance: "claude_reported",
+          confidence: "high",
+        }
+      : undefined,
+    promptCache: event.promptCache,
   };
-}
-
-export function estimatedApiCostDeltaForPrompt(
-  events: StoredEvent[],
-  promptId: string,
-): ProvenancedMetric<number> | undefined {
-  const start = events.find(
-    (event): event is Extract<StoredEvent, { type: "prompt_lifecycle" }> =>
-      event.type === "prompt_lifecycle" && event.phase === "start" && event.promptId === promptId,
-  );
-  const ends = events.filter(
-    (event): event is Extract<StoredEvent, { type: "prompt_lifecycle" }> =>
-      event.type === "prompt_lifecycle" &&
-      (event.phase === "stop" || event.phase === "stop_failure") &&
-      event.promptId === promptId,
-  );
-  const end = ends[ends.length - 1];
-  if (!start || !end || !start.sessionId || start.sessionId !== end.sessionId) {
-    return undefined;
-  }
-
-  const snapshots = events.filter(
-    (event): event is Extract<StoredEvent, { type: "quota_snapshot" }> =>
-      event.type === "quota_snapshot" && event.sessionId === start.sessionId,
-  );
-  const baseline = [...snapshots]
-    .reverse()
-    .find((event) => event.capturedAt <= start.capturedAt && event.promptId !== promptId);
-  const after = [...snapshots]
-    .reverse()
-    .find((event) => event.capturedAt >= end.capturedAt && event.promptId === promptId);
-
-  if (!baseline || !after) {
-    return undefined;
-  }
-  if (baseline.sessionId !== after.sessionId) {
-    return undefined;
-  }
-  return costDeltaUsd(baseline.estimatedApiCostUsd, after.estimatedApiCostUsd, after.capturedAt);
 }

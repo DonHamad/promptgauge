@@ -26,6 +26,13 @@ export function formatStatus(view: StatusView, now: Date): string {
     "",
     ...formatQuotaBlock("7-day quota", quota?.sevenDay?.value, now, view.sevenDayLabel),
     "",
+    ...formatQuotaBlock(
+      "Spend limit (Claude apps gateway, not 5h/7d)",
+      quota?.spendLimit?.value,
+      now,
+      quota?.spendLimit ? "unavailable" : "unavailable",
+    ),
+    "",
     ...formatCostBlock(quota),
     "",
     ...formatContextBlock(quota),

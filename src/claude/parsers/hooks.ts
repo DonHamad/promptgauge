@@ -1,6 +1,6 @@
 import type { StoredEvent } from "../../core/types.js";
+import { projectIdentityFromPath } from "../../core/privacy/project-id.js";
 import { asFiniteNumber, asString, isRecord } from "../../utils/json.js";
-import { normalizePathForCompare } from "../../utils/platform.js";
 
 export type HookParseResult = { ok: true; events: StoredEvent[] } | { ok: false; error: string };
 
@@ -20,40 +20,67 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
 
   const sessionId = asString(payload.session_id);
   const promptId = asString(payload.prompt_id);
-  const transcriptPath = asString(payload.transcript_path);
-  if (transcriptPath) {
-    normalizePathForCompare(transcriptPath);
-  }
+  const cwd = asString(payload.cwd);
+  const project = cwd ? projectIdentityFromPath(cwd) : undefined;
 
-  const base = {
+  const envelope = {
     capturedAt,
     ingestSource: "hook" as const,
     sessionId,
     promptId,
+  };
+  const projectFields = {
+    projectKey: project?.projectKey,
+    projectBasename: project?.projectBasename,
   };
 
   switch (hookEventName) {
     case "UserPromptSubmit":
       return {
         ok: true,
-        events: [{ ...base, type: "prompt_lifecycle", phase: "start", hookEventName }],
+        events: [
+          {
+            ...envelope,
+            ...projectFields,
+            type: "prompt_lifecycle",
+            phase: "start",
+            hookEventName,
+          },
+        ],
       };
     case "Stop":
       return {
         ok: true,
-        events: [{ ...base, type: "prompt_lifecycle", phase: "stop", hookEventName }],
+        events: [
+          {
+            ...envelope,
+            ...projectFields,
+            type: "prompt_lifecycle",
+            phase: "stop",
+            hookEventName,
+            backgroundTaskCount: arrayCount(payload.background_tasks),
+          },
+        ],
       };
     case "StopFailure":
       return {
         ok: true,
-        events: [{ ...base, type: "prompt_lifecycle", phase: "stop_failure", hookEventName }],
+        events: [
+          {
+            ...envelope,
+            ...projectFields,
+            type: "prompt_lifecycle",
+            phase: "stop_failure",
+            hookEventName,
+          },
+        ],
       };
     case "PreToolUse":
       return {
         ok: true,
         events: [
           {
-            ...base,
+            ...envelope,
             type: "tool_activity",
             phase: "pre",
             toolName: asString(payload.tool_name),
@@ -66,7 +93,7 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
         ok: true,
         events: [
           {
-            ...base,
+            ...envelope,
             type: "tool_activity",
             phase: "post",
             toolName: asString(payload.tool_name),
@@ -80,7 +107,7 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
         ok: true,
         events: [
           {
-            ...base,
+            ...envelope,
             type: "tool_activity",
             phase: "post_failure",
             toolName: asString(payload.tool_name),
@@ -93,7 +120,7 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
         ok: true,
         events: [
           {
-            ...base,
+            ...envelope,
             type: "subagent_activity",
             phase: "start",
             agentId: asString(payload.agent_id),
@@ -106,7 +133,7 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
         ok: true,
         events: [
           {
-            ...base,
+            ...envelope,
             type: "subagent_activity",
             phase: "stop",
             agentId: asString(payload.agent_id),
@@ -119,7 +146,7 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
         ok: true,
         events: [
           {
-            ...base,
+            ...envelope,
             type: "task_lifecycle",
             phase: "created",
             taskId: asString(payload.task_id),
@@ -131,7 +158,7 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
         ok: true,
         events: [
           {
-            ...base,
+            ...envelope,
             type: "task_lifecycle",
             phase: "completed",
             taskId: asString(payload.task_id),
@@ -141,4 +168,8 @@ export function parseHook(payload: unknown, capturedAt: string): HookParseResult
     default:
       return { ok: true, events: [] };
   }
+}
+
+function arrayCount(value: unknown): number | undefined {
+  return Array.isArray(value) ? value.length : undefined;
 }
