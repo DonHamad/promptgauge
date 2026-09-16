@@ -12,6 +12,7 @@ import { looksLikeSecretFilename } from "../../utils/redact.js";
 import { isPromptGaugeWrapperCommand } from "../../claude/statusline/plan.js";
 import { readInstallState, readSettingsFile } from "../../claude/statusline/install.js";
 import { hasPromptGaugeHooks, type ClaudeHooksConfig } from "../../claude/hooks/plan.js";
+import { pluginHasNativeHooks, pluginHasRuntime } from "../../claude/plugin/root.js";
 import { summarizeSession } from "../../core/accounting/session-summary.js";
 import { completedPromptIds } from "../../reporting/prompts.js";
 import { attributePrompt } from "../../core/attribution/prompt-lifecycle.js";
@@ -34,12 +35,14 @@ export interface DoctorContext {
   events: StoredEvent[];
   now: Date;
   freshnessMs: number;
+  pluginRoot?: string;
   claudeVersionCommand?: () =>
     ClaudeBinaryProbe | { ok?: boolean; found?: boolean; version?: string; path?: string };
 }
 
 export function runDoctor(ctx: DoctorContext): DoctorCheck[] {
   return [
+    pluginCheck(ctx),
     nodeCheck(ctx.nodeVersion),
     claudeBinaryCheck(ctx),
     telemetryEvidenceCheck(ctx),
@@ -69,6 +72,19 @@ export function formatDoctor(checks: DoctorCheck[]): string {
   lines.push("");
   lines.push("No credentials inspected.");
   return `${lines.join("\n")}\n`;
+}
+
+function pluginCheck(ctx: DoctorContext): DoctorCheck {
+  if (!ctx.pluginRoot) {
+    return { name: "Plugin", status: "WARN", detail: "not running from a plugin install" };
+  }
+  if (!pluginHasRuntime(ctx.pluginRoot)) {
+    return { name: "Plugin", status: "FAIL", detail: "runtime missing" };
+  }
+  if (!pluginHasNativeHooks(ctx.pluginRoot)) {
+    return { name: "Plugin", status: "WARN", detail: "plugin hooks.json missing" };
+  }
+  return { name: "Plugin", status: "PASS", detail: "plugin runtime and hooks present" };
 }
 
 function nodeCheck(version: string): DoctorCheck {
@@ -203,6 +219,13 @@ function telemetryEvidenceCheck(ctx: DoctorContext): DoctorCheck {
 }
 
 function hookIntegrationCheck(ctx: DoctorContext): DoctorCheck {
+  if (ctx.pluginRoot && pluginHasNativeHooks(ctx.pluginRoot)) {
+    return {
+      name: "Hook integration",
+      status: "PASS",
+      detail: "plugin UserPromptSubmit and Stop hooks",
+    };
+  }
   const settingsPath = path.join(resolveClaudeConfigDir(ctx), "settings.json");
   const loaded = readSettingsFile(settingsPath);
   if (!loaded.ok) {

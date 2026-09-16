@@ -5,6 +5,8 @@ import { readEvents } from "../storage/jsonl.js";
 import { ensureDataDir, resolveDataDir, resolvePaths } from "../storage/paths.js";
 import { collectFromStdin } from "./commands/collect.js";
 import { formatDoctor, runDoctor } from "./commands/doctor.js";
+import { formatSimpleDoctor, runCleanup, runSetup } from "./commands/setup.js";
+import { detectPluginRoot } from "../claude/plugin/root.js";
 import {
   describeStatusLine,
   installStatusLine,
@@ -48,11 +50,12 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
   switch (parsed.command) {
     case "status": {
       const { events } = readEvents(paths.eventsFile);
-      io.stdout.write(renderStatus(events, loaded.config, now));
+      io.stdout.write(renderStatus(events, loaded.config, now, parsed.simple));
       return 0;
     }
     case "doctor": {
       const { events, skippedCorruptLines } = readEvents(paths.eventsFile);
+      const pluginRoot = detectPluginRoot(io.env, io.cliEntry);
       const checks = runDoctor({
         nodeVersion: io.nodeVersion ?? process.version,
         dataDir,
@@ -63,14 +66,47 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
         events,
         now,
         freshnessMs: loaded.config.freshnessMs,
+        pluginRoot,
         claudeVersionCommand: parsed.claudeMissing
           ? () => ({ ok: false })
           : io.env.PROMPTGAUGE_FAKE_CLAUDE === "1"
             ? () => ({ ok: true, version: "claude fake 0.0.0" })
             : undefined,
       });
-      io.stdout.write(formatDoctor(checks));
+      io.stdout.write(parsed.simple ? formatSimpleDoctor(checks) : formatDoctor(checks));
       return checks.some((check) => check.status === "FAIL") ? 1 : 0;
+    }
+    case "setup": {
+      const pluginRoot = detectPluginRoot(io.env, io.cliEntry);
+      const result = runSetup({
+        pluginRoot,
+        settingsIo: {
+          home,
+          dataDir,
+          env: io.env,
+          now: () => now,
+          cliEntry: io.cliEntry,
+          nodeExecutable: process.execPath,
+        },
+      });
+      io.stdout.write(result.message);
+      return result.ok ? 0 : 1;
+    }
+    case "uninstall": {
+      const pluginRoot = detectPluginRoot(io.env, io.cliEntry);
+      const result = runCleanup({
+        pluginRoot,
+        settingsIo: {
+          home,
+          dataDir,
+          env: io.env,
+          now: () => now,
+          cliEntry: io.cliEntry,
+          nodeExecutable: process.execPath,
+        },
+      });
+      io.stdout.write(result.message);
+      return result.ok ? 0 : 1;
     }
     case "collect": {
       const raw = io.readStdin ? await io.readStdin() : await readAll(io.stdin);
@@ -195,10 +231,11 @@ interface ParsedArgs {
   now?: string;
   claudeMissing: boolean;
   limit?: number;
+  simple: boolean;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
-  const parsed: ParsedArgs = { help: false, version: false, claudeMissing: false };
+  const parsed: ParsedArgs = { help: false, version: false, claudeMissing: false, simple: false };
   const rest: string[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -215,6 +252,8 @@ function parseArgs(argv: string[]): ParsedArgs {
     } else if (arg === "--limit") {
       parsed.limit = Number.parseInt(argv[i + 1] ?? "", 10);
       i += 1;
+    } else if (arg === "--simple") {
+      parsed.simple = true;
     } else if (arg === "--simulate-missing-claude") {
       parsed.claudeMissing = true;
     } else if (arg === "--pg-wrapper" || arg === "--pg-hook") {
@@ -241,8 +280,10 @@ See where your Claude Code usage goes.
 🚧 Early development / pre-release
 
 Usage:
-  promptgauge status
-  promptgauge doctor
+  promptgauge setup
+  promptgauge status [--simple]
+  promptgauge doctor [--simple]
+  promptgauge uninstall
   promptgauge prompts [--limit 10]
   promptgauge statusline install
   promptgauge statusline uninstall
@@ -257,8 +298,10 @@ Usage:
   promptgauge --version
 
 Commands:
+  setup              One-time Claude Code status-line setup
   status             Show observed quota snapshots and prompt counts
   doctor             Check local integration health (no credentials inspected)
+  uninstall          Restore previous statusLine; keep local history
   prompts            Recent completed prompts without prompt text
   statusline install Non-destructive Claude Code status-line wrapper
   statusline uninstall Restore the previous statusLine where possible
@@ -274,6 +317,7 @@ Options:
   --data-dir <path>  Override local data directory
   --now <iso>        Evaluate time-dependent output at a fixed instant
   --limit <n>        Number of prompts to show (default 10)
+  --simple           Compact status and doctor output
   -h, --help         Show this help
   -v, --version      Show version
 

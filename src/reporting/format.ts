@@ -15,6 +15,30 @@ export interface StatusView {
   latestPromptLines: string[];
 }
 
+export function formatSimpleStatus(view: StatusView): string {
+  const five = view.session.latestQuota?.fiveHour
+    ? `${formatPct(view.session.latestQuota.fiveHour.value.usedPercentage)}%`
+    : "Unavailable";
+  const seven = view.session.latestQuota?.sevenDay
+    ? `${formatPct(view.session.latestQuota.sevenDay.value.usedPercentage)}%`
+    : "Unavailable";
+  const monitoring = view.integration === "ACTIVE" ? "Active" : "Idle";
+  const session =
+    view.integration === "ACTIVE" || view.session.promptsObserved > 0 ? "Active" : "Idle";
+  return [
+    "PromptGauge",
+    "",
+    `Monitoring       ${monitoring}`,
+    "",
+    `5h usage         ${five}`,
+    `7d usage         ${seven}`,
+    "",
+    `Prompts          ${view.session.promptsObserved}`,
+    `Current session  ${session}`,
+    "",
+  ].join("\n");
+}
+
 export function formatStatus(view: StatusView, now: Date): string {
   const quota = view.session.latestQuota;
   const lines = [

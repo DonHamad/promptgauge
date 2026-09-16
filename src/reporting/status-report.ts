@@ -7,6 +7,7 @@ import { isStale } from "../utils/time.js";
 import type { StoredEvent } from "../core/types.js";
 import {
   formatLatestPrompt,
+  formatSimpleStatus,
   formatStatus,
   quotaUnavailableLabel,
   type StatusView,
@@ -39,8 +40,14 @@ export function buildStatusView(
   };
 }
 
-export function renderStatus(events: StoredEvent[], config: PromptGaugeConfig, now: Date): string {
-  return formatStatus(buildStatusView(events, config, now), now);
+export function renderStatus(
+  events: StoredEvent[],
+  config: PromptGaugeConfig,
+  now: Date,
+  simple = false,
+): string {
+  const view = buildStatusView(events, config, now);
+  return simple ? formatSimpleStatus(view) : formatStatus(view, now);
 }
 
 function integrationStatus(
