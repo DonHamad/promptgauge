@@ -53,3 +53,11 @@ Official plugin `settings.json` currently supports `agent` and `subagentStatusLi
 4. Returns that command's first stdout line
 
 Collection errors are swallowed. Display fail-open.
+
+## Hooks installer
+
+`promptgauge hooks install` appends `UserPromptSubmit` and `Stop` command handlers that run `collect --pg-hook`. Existing hook entries are left in place. Collect prints nothing on hook events so UserPromptSubmit cannot inject PromptGauge output into Claude's context.
+
+## Snapshot correlation
+
+See `src/core/attribution/correlate.ts` and `docs/CLAUDE_CODE_INTEGRATION.md`.

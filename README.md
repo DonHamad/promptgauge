@@ -18,6 +18,20 @@ PromptGauge is an independent open-source project and is not affiliated with or 
 - Observe-only guardrails
 - Privacy-preserving status-line collection via a non-destructive wrapper
 
+## Feature matrix
+
+| Feature                           | Status                                                           |
+| --------------------------------- | ---------------------------------------------------------------- |
+| Local telemetry collector         | Proven by tests                                                  |
+| Official status-line integration  | Installer proven by tests; wrapper installed on this machine     |
+| 5h / 7d quota visibility          | Parser proven; live observation not yet available                |
+| Gateway `spend_limit`             | Documented optional field; parser proven; live not yet available |
+| `prompt_cache` allowlist          | Documented v2.1.251+; parser proven; live not yet available      |
+| Per-prompt lifecycle              | `UserPromptSubmit` → `Stop` installer + tests                    |
+| Per-prompt quota/cost attribution | Derived only when correlation rules pass                         |
+| Circuit breaker                   | Observe-only                                                     |
+| Task accounting                   | Planned                                                          |
+
 ## What this pre-release does not claim
 
 - Exact per-prompt token billing
@@ -25,6 +39,7 @@ PromptGauge is an independent open-source project and is not affiliated with or 
 - Guaranteed reduction in Claude usage
 - Automatic prevention of all runaway usage
 - Real-time blocking
+- Live 5h/7d quota proof on this machine (Claude Code login is still required)
 
 Quota percentages are **CLAUDE_REPORTED**. Quota deltas are **DERIVED**. `cost.total_cost_usd` is a **CLAUDE_REPORTED_ESTIMATE** of API-equivalent session cost, not Pro/Max subscription billing. Exact prompt token consumption is **UNAVAILABLE**.
 
@@ -45,10 +60,12 @@ pnpm build
 node dist/index.js --help
 node dist/index.js doctor
 node dist/index.js statusline install
+node dist/index.js hooks install
+node dist/index.js prompts
 node dist/index.js status
 ```
 
-`promptgauge statusline install` wraps `~/.claude/settings.json` without discarding an existing `statusLine`. A second install does not double-wrap. `promptgauge statusline uninstall` restores the previous command where it was saved.
+`promptgauge statusline install` wraps `~/.claude/settings.json` without discarding an existing `statusLine`. `promptgauge hooks install` appends `UserPromptSubmit` and `Stop` collectors without removing other hooks. A second install of either command is idempotent. Collection failures fail open so Claude Code still works.
 
 If PromptGauge collection fails, the original status line still runs.
 
