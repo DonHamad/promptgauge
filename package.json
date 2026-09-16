@@ -1,0 +1,52 @@
+{
+  "name": "promptgauge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first Claude Code usage observability: per-prompt and per-task accounting, live quota visibility, and runaway-usage guardrails.",
+  "type": "module",
+  "bin": {
+    "promptgauge": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@12.4.2",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm scan:secrets"
+  },
+  "keywords": [
+    "claude-code",
+    "developer-tools",
+    "ai",
+    "typescript",
+    "cli",
+    "open-source",
+    "observability",
+    "token-usage",
+    "local-first"
+  ],
+  "license": "MIT",
+  "author": "Hamad",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hamad/promptgauge.git"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@types/node": "^24.3.1",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.43.0",
+    "vitest": "^3.2.4"
+  }
+}

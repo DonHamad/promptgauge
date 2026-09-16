@@ -1,0 +1,8 @@
+dist
+node_modules
+coverage
+pnpm-lock.yaml
+CHANGELOG.md
+tests/fixtures/statusline-malformed.json
+tests/fixtures/corrupted-events.jsonl
+

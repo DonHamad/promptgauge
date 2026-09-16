@@ -1,0 +1,44 @@
+# Dependencies and build
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Package manager
+.pnpm-store/
+.npm/
+yarn-error.log
+npm-debug.log*
+
+# Local tooling
+.eslintcache
+.prettiercache
+*.log
+
+# Environment and secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+.credentials
+.credentials.json
+**/credentials/**
+**/.claude/.credentials*
+**/.claude.json
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local PromptGauge data if someone runs the CLI in-repo
+.promptgauge/
+tmp/
+temp/
+
+# Test artifacts
+.vitest/
